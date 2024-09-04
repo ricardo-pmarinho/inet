@@ -1,0 +1,18 @@
+# Ignorar todos os arquivos por padrão
+*
+
+# Não ignorar diretórios
+!*/
+
+# Não ignorar arquivos com as seguintes extensões
+!*.cc
+!*.h
+!*.ned
+!*.msg
+!*.movements
+!*.ini
+!*.xml
+!Makefile
+
+# Não ignorar o próprio .gitignore
+!.gitignore

@@ -1,0 +1,55 @@
+<environment>
+    <object position="min 130 300 0" orientation="0 0 0" shape="cuboid 5 50 4"
+            material="concrete" fill-color="203 65 84" opacity="0.8"/>
+    <object position="min 180 250 0" orientation="90 0 0" shape="cuboid 5 100 4"
+            material="concrete" fill-color="203 65 84" opacity="0.8"/>
+    <object position="min 180 304 0" orientation="90 0 0" shape="cuboid 5 100 4"
+            material="concrete" fill-color="203 65 84" opacity="0.8"/>
+    <object position="min 230 300 0" orientation="0 0 0" shape="cuboid 5 50 4"
+            material="concrete" fill-color="203 65 84" opacity="0.8"/>
+            
+    <object position="min 330 300 0" orientation="0 0 0" shape="cuboid 5 50 4"
+            material="concrete" fill-color="203 65 84" opacity="0.8"/>
+    <object position="min 380 250 0" orientation="90 0 0" shape="cuboid 5 100 4"
+            material="concrete" fill-color="203 65 84" opacity="0.8"/>
+    <object position="min 380 304 0" orientation="90 0 0" shape="cuboid 5 100 4"
+            material="concrete" fill-color="203 65 84" opacity="0.8"/>
+    <object position="min 430 300 0" orientation="0 0 0" shape="cuboid 5 50 4"
+            material="concrete" fill-color="203 65 84" opacity="0.8"/>
+            
+    <object position="min 30 100 0" orientation="0 0 0" shape="cuboid 5 50 4"
+            material="concrete" fill-color="203 65 84" opacity="0.8"/>
+    <object position="min 80 50 0" orientation="90 0 0" shape="cuboid 5 100 4"
+            material="concrete" fill-color="203 65 84" opacity="0.8"/>
+    <object position="min 80 104 0" orientation="90 0 0" shape="cuboid 5 100 4"
+            material="concrete" fill-color="203 65 84" opacity="0.8"/>
+    <object position="min 130 100 0" orientation="0 0 0" shape="cuboid 5 50 4"
+            material="concrete" fill-color="203 65 84" opacity="0.8"/>
+            
+    <object position="min 50 200 0" orientation="0 0 0" shape="cuboid 5 50 4"
+            material="concrete" fill-color="203 65 84" opacity="0.8"/>
+    <object position="min 100 150 0" orientation="90 0 0" shape="cuboid 5 100 4"
+            material="concrete" fill-color="203 65 84" opacity="0.8"/>
+    <object position="min 100 204 0" orientation="90 0 0" shape="cuboid 5 100 4"
+            material="concrete" fill-color="203 65 84" opacity="0.8"/>
+    <object position="min 150 200 0" orientation="0 0 0" shape="cuboid 5 50 4"
+            material="concrete" fill-color="203 65 84" opacity="0.8"/>
+            
+    <object position="min 250 50 0" orientation="0 0 0" shape="cuboid 5 50 4"
+            material="concrete" fill-color="203 65 84" opacity="0.8"/>
+    <object position="min 300 0 0" orientation="90 0 0" shape="cuboid 5 100 4"
+            material="concrete" fill-color="203 65 84" opacity="0.8"/>
+    <object position="min 300 54 0" orientation="90 0 0" shape="cuboid 5 100 4"
+            material="concrete" fill-color="203 65 84" opacity="0.8"/>
+    <object position="min 350 50 0" orientation="0 0 0" shape="cuboid 5 50 4"
+            material="concrete" fill-color="203 65 84" opacity="0.8"/>
+            
+    <object position="min 400 200 0" orientation="0 0 0" shape="cuboid 5 50 4"
+            material="concrete" fill-color="203 65 84" opacity="0.8"/>
+    <object position="min 450 150 0" orientation="90 0 0" shape="cuboid 5 100 4"
+            material="concrete" fill-color="203 65 84" opacity="0.8"/>
+    <object position="min 450 204 0" orientation="90 0 0" shape="cuboid 5 100 4"
+            material="concrete" fill-color="203 65 84" opacity="0.8"/>
+    <object position="min 500 200 0" orientation="0 0 0" shape="cuboid 5 50 4"
+            material="concrete" fill-color="203 65 84" opacity="0.8"/>
+</environment>
