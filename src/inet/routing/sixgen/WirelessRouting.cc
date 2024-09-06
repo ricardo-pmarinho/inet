@@ -1876,7 +1876,6 @@ void WirelessRouting::handleCainFWD(const Ptr<CAINMSG>& cainmsg){
     EV << "CAIN destination: " << cainmsg->getCainDestAddr() << endl;
     EV << "Self ipAddr: " << getSelfIPAddress() << endl;
 
-    endSimulation();
     calculate_q_matrix();
     std::string netType = getModuleByPath("simpleNetwork")->par("networkType");
     if(netType == "SC" || netType == "EECRM"){

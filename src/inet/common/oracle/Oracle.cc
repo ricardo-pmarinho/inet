@@ -327,7 +327,7 @@ void Oracle::setStartNode(L3Address nodeAddr){
 }
 
 void Oracle::checkShutdownTime(int numNodes){
-     if(this->shutdownNodes->size()==numNodes){
+     if(this->shutdownNodes->size() >=0.7*numNodes){
          EV << "All nodes shutdown" << endl;
          simulationEnd = lround(simTime().dbl());
 
@@ -357,7 +357,7 @@ void Oracle::checkShutdownNodes(){
         if(!it->second)
             nodeCount++;
     }
-    if(nodeCount >=0.8*recNodes->size()){
+    if(nodeCount >=0.6*recNodes->size()){
         simulationEnd = lround(simTime().dbl());
 
         emit(simulationEndSignal,simulationEnd);
