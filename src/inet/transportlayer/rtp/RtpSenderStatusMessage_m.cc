@@ -1,5 +1,5 @@
 //
-// Generated file, do not edit! Created by nedtool 5.6 from inet/transportlayer/rtp/RtpSenderStatusMessage.msg.
+// Generated file, do not edit! Created by nedtool 5.6 from ./inet/transportlayer/rtp/RtpSenderStatusMessage.msg.
 //
 
 // Disable warnings about unused variables, empty switch stmts, etc:
@@ -361,7 +361,7 @@ unsigned int RtpSenderStatusMessageDescriptor::getFieldTypeFlags(int field) cons
         field -= basedesc->getFieldCount();
     }
     static unsigned int fieldTypeFlags[] = {
-        FD_ISEDITABLE,    // FIELD_status
+        0,    // FIELD_status
         FD_ISEDITABLE,    // FIELD_timeStamp
     };
     return (field >= 0 && field < 2) ? fieldTypeFlags[field] : 0;
@@ -493,7 +493,6 @@ bool RtpSenderStatusMessageDescriptor::setFieldValueAsString(void *object, int f
     }
     RtpSenderStatusMessage *pp = (RtpSenderStatusMessage *)object; (void)pp;
     switch (field) {
-        case FIELD_status: pp->setStatus((inet::rtp::RtpSenderStatus)string2enum(value, "inet::rtp::RtpSenderStatus")); return true;
         case FIELD_timeStamp: pp->setTimeStamp(string2ulong(value)); return true;
         default: return false;
     }

@@ -462,7 +462,7 @@ private:
     void create_reward_matrix();
     void calculate_q_matrix();
     void calculate_drone_q_matrix();
-    int calculateDnnDecision(L3Address cainDest);
+    void calculateDnnDecision(L3Address cainDest);
     bool calculateDroneDecision(L3Address cainDest);
 
     double backoffTimer();

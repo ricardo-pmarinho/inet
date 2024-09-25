@@ -458,9 +458,6 @@ void WirelessRouting::handleMessageWhenUp(cMessage *msg)
                                                 cainMsg->getPacketType() == CAINREQ_IPv6)){
                                     if(!cainMsg->getCainDestAddr().isBroadcast()){
                                         calculateDnnDecision(cainMsg->getCainDestAddr());
-//                                        calculate_q_matrix();
-//                                        int state = get_coverage_state(cainMsg->getCainDestAddr());
-//                                        bool decision = sendMessageML(state);
                                         bool decision = network->getDecision();
                                         if(decision){
                                             double back = 0;
@@ -1770,7 +1767,7 @@ void WirelessRouting::handleStartOperation(LifecycleOperation *operation)
         if(!strcmp(this->getParentModule()->getName(),"host"))
                 scheduleAt(simTime()+2, cainTrigger);
         scheduleAt(simTime()+ 1, endTimer);
-        scheduleAt(simTime()+3.1, sendFlWeights);
+        //scheduleAt(simTime()+3.1, sendFlWeights);
 //        scheduleAt(simTime()+3, sendFlAvgWeights);
         scheduleAt(simTime()+1, leachChDecision);
 
@@ -1893,8 +1890,7 @@ void WirelessRouting::handleCainFWD(const Ptr<CAINMSG>& cainmsg){
     int hops=cainmsg->getHops();
     cainmsg->setHops(++hops);
 
-    if(!strcmp(this->getParentModule()->getName(),"satellite")/* &&
-            cainmsg->getCainDestAddr() == getSelfIPAddress()*/){
+    if(!strcmp(this->getParentModule()->getName(),"satellite")){
         EV << "Satellite receiving message" << endl;
 
         recSatMsg++;
@@ -1942,7 +1938,6 @@ void WirelessRouting::handleCainFWD(const Ptr<CAINMSG>& cainmsg){
         }else{
 
             if(!strcmp(this->getParentModule()->getName(),"antenna") && getSelfIPAddress() == cainmsg->getCainDestAddr()){
-        //        dist+=cainmsg->getDistance();
                 Coord ueCoord = cainmsg->getSenderCoord();
                 Coord thisCoord = baseMobility->getCurrentPosition();
                 dist = thisCoord.distance(ueCoord);
@@ -1956,9 +1951,6 @@ void WirelessRouting::handleCainFWD(const Ptr<CAINMSG>& cainmsg){
 
                 recCainFwdMsg++;
                 emit(recCainFwdMsgSignal,recCainFwdMsg);
-
-        //        recFwdAntennaMsg++;
-        //        emit(recFwdAntennaMsgSignal,recFwdAntennaMsg);
                 if(rl_type == "Hop1" || rl_type == "Hop2" || rl_type == "Hop3"){
                     cainmsg->setPacketType(usingIpv6 ? CAINREPLY_IPv6 : CAINREPLY);
                     cainmsg->setHops(hops);
@@ -1982,7 +1974,6 @@ void WirelessRouting::handleCainFWD(const Ptr<CAINMSG>& cainmsg){
                         sendCainMsg(cainmsg,1,back);
                     }
 
-        //            dist+=cainmsg->getDistance();
                     Coord senderCoord = cainmsg->getSenderCoord();
                     dist = baseMobility->getCurrentPosition().distance(senderCoord);
                     emit(distSignal,dist);
@@ -2511,7 +2502,7 @@ void WirelessRouting::handleCainRREP(const Ptr<CAINMSG>& cainmsg){
 void WirelessRouting::handleSCMSG(const Ptr<CAINMSG>& cainmsg){
 
     if(recFwdMessages->find(cainmsg->getOriginatorAddr()) == recFwdMessages->end()){
-            recFwdMessages->operator [](cainmsg->getOriginatorAddr())=cainmsg->getMsgId();
+        recFwdMessages->operator [](cainmsg->getOriginatorAddr())=cainmsg->getMsgId();
 
         updateBestHop(cainmsg->getSourceAddr());
         int hopCount=cainmsg->getHopCount();
@@ -2527,113 +2518,116 @@ void WirelessRouting::handleSCMSG(const Ptr<CAINMSG>& cainmsg){
             satDist = thisCoord.distance(ueCoord);
             emit(satDistSignal,satDist);
 
-        }else
-
-        if(!strcmp(this->getParentModule()->getName(),"drone") && getSelfIPAddress() == cainmsg->getCainDestAddr()){
-            EV << "Drone receiving message" << endl;
-            Coord ueCoord = cainmsg->getSenderCoord();
-            Coord thisCoord = baseMobility->getCurrentPosition();
-            droneDist = thisCoord.distance(ueCoord);
-            emit(droneDistSignal,droneDist);
-
-            recDroneMsg++;
-            emit(recDroneMsgSignal,recDroneMsg);
-
-            cainmsg->setSourceAddr(getSelfIPAddress());
-            cainmsg->setDestAddr(addressType->getBroadcastAddress());
-            if(satelliteAddr.isUnspecified()){
-                int droneDistMapsize = droneDistMap->size();
-                if(droneDistMapsize!=0){
-                    map<L3Address,double>::iterator it = droneDistMap->begin();
-                    for(;it != droneDistMap->end(); it++){
-                        bool decision = calculateDroneDecision(it->first);
-                        if(decision){
-                            cainmsg->setCainDestAddr(it->first);
-                            sendCainMsg(cainmsg,1,0);
-                            break;
-                        }
-                    }
-                }else{
-                    sendCainMsg(cainmsg,1,0);
-                }
-            }else{
-                cainmsg->setCainDestAddr(satelliteAddr);
-                sendCainMsg(cainmsg, 1, 0);
-            }
-
-        }else
-        if(!antennaAddr.isUnspecified()){
-            cainmsg->setSourceAddr(getSelfIPAddress());
-            cainmsg->setDestAddr(addressType->getBroadcastAddress());
-            cainmsg->setCainDestAddr(antennaAddr);
-            int hopcount=cainmsg->getHopCount();
-            cainmsg->setHopCount(--hopcount);
-            EV << "antenna address: " << antennaAddr << endl;
-            sendCainMsg(cainmsg,1,0);
-        }
-        if(!strcmp(this->getParentModule()->getName(),"antenna")){
-            int hops=cainmsg->getHops();
-            cainmsg->setHops(++hops);
-            //if(getSelfIPAddress() == chAddr){
-                msgHops=cainmsg->getHops();
-                emit(hopCountSignal,msgHops);
-                recCainFwdMsg++;
-                emit(recCainFwdMsgSignal,recCainFwdMsg);
-
-                simtime_t arrivalTime = simTime();
-                delay=arrivalTime-cainmsg->getTimeInit();
-                EV << "msg delay: " << delay << endl;
-                emit(timeSignal,delay);
-
-                Coord ueCoord = cainmsg->getSenderCoord();
-                Coord thisCoord = baseMobility->getCurrentPosition();
-                dist = thisCoord.distance(ueCoord);
-                emit(distSignal,dist);
         }else{
-            int hops=cainmsg->getHops();
-            cainmsg->setHops(++hops);
-            if(getSelfIPAddress() == chAddr){
-                msgHops=cainmsg->getHops();
-                emit(hopCountSignal,msgHops);
-                recCainFwdMsg++;
-                emit(recCainFwdMsgSignal,recCainFwdMsg);
 
-                simtime_t arrivalTime = simTime();
-                delay=arrivalTime-cainmsg->getTimeInit();
-                EV << "msg delay: " << delay << endl;
-                emit(timeSignal,delay);
-
+            if(!strcmp(this->getParentModule()->getName(),"drone") && getSelfIPAddress() == cainmsg->getCainDestAddr()){
+                EV << "Drone receiving message" << endl;
                 Coord ueCoord = cainmsg->getSenderCoord();
                 Coord thisCoord = baseMobility->getCurrentPosition();
-                dist = thisCoord.distance(ueCoord);
-                emit(distSignal,dist);
+                droneDist = thisCoord.distance(ueCoord);
+                emit(droneDistSignal,droneDist);
 
-                if(!droneAddr.isUnspecified()){
-                    cainmsg->setCainDestAddr(droneAddr);
-                    cainmsg->setDestAddr(droneAddr);
-                    cainmsg->setSourceAddr(getSelfIPAddress());
+                recDroneMsg++;
+                emit(recDroneMsgSignal,recDroneMsg);
 
+                cainmsg->setSourceAddr(getSelfIPAddress());
+                cainmsg->setDestAddr(addressType->getBroadcastAddress());
+                if(satelliteAddr.isUnspecified()){
                     int droneDistMapsize = droneDistMap->size();
                     if(droneDistMapsize!=0){
-                        bool decision = calculateDroneDecision(cainmsg->getCainDestAddr());
-                        if(decision){
-                            sendCainMsg(cainmsg,1,0);
-                        }else
-                            sendCainMsg(cainmsg,1,0);
-
+                        map<L3Address,double>::iterator it = droneDistMap->begin();
+                        for(;it != droneDistMap->end(); it++){
+                            bool decision = calculateDroneDecision(it->first);
+                            if(decision){
+                                cainmsg->setCainDestAddr(it->first);
+                                sendCainMsg(cainmsg,1,0);
+                                break;
+                            }
+                        }
+                    }else{
+                        sendCainMsg(cainmsg,1,0);
                     }
+                }else{
+                    cainmsg->setCainDestAddr(satelliteAddr);
+                    sendCainMsg(cainmsg, 1, 0);
                 }
 
             }else{
-                if(chAddr.isUnspecified())
-                    cainmsg->setCainDestAddr(bestHopAddr->first);
-                else
-                    cainmsg->setCainDestAddr(chAddr/*bestHopAddr->first*/);
-                //cainmsg->setHopCount(hopCount-1);
-                cainmsg->setSourceAddr(getSelfIPAddress());
-                sentCainFwdMsg++;
-                emit(sentCainFwdMsgSignal,sentCainFwdMsg);
-                sendCainMsg(cainmsg, 2,0);
+                if(!antennaAddr.isUnspecified()){
+                    cainmsg->setSourceAddr(getSelfIPAddress());
+                    cainmsg->setDestAddr(addressType->getBroadcastAddress());
+                    cainmsg->setCainDestAddr(antennaAddr);
+                    int hopcount=cainmsg->getHopCount();
+                    cainmsg->setHopCount(--hopcount);
+                    EV << "antenna address: " << antennaAddr << endl;
+                    sendCainMsg(cainmsg,1,0);
+                }else{
+                    if(!strcmp(this->getParentModule()->getName(),"antenna")){
+                        int hops=cainmsg->getHops();
+                        cainmsg->setHops(++hops);
+                        //if(getSelfIPAddress() == chAddr){
+                            msgHops=cainmsg->getHops();
+                            emit(hopCountSignal,msgHops);
+                            recCainFwdMsg++;
+                            emit(recCainFwdMsgSignal,recCainFwdMsg);
+
+                            simtime_t arrivalTime = simTime();
+                            delay=arrivalTime-cainmsg->getTimeInit();
+                            EV << "msg delay: " << delay << endl;
+                            emit(timeSignal,delay);
+
+                            Coord ueCoord = cainmsg->getSenderCoord();
+                            Coord thisCoord = baseMobility->getCurrentPosition();
+                            dist = thisCoord.distance(ueCoord);
+                            emit(distSignal,dist);
+                    }else{
+                        int hops=cainmsg->getHops();
+                        cainmsg->setHops(++hops);
+                        if(getSelfIPAddress() == chAddr){
+                            msgHops=cainmsg->getHops();
+                            emit(hopCountSignal,msgHops);
+                            recCainFwdMsg++;
+                            emit(recCainFwdMsgSignal,recCainFwdMsg);
+
+                            simtime_t arrivalTime = simTime();
+                            delay=arrivalTime-cainmsg->getTimeInit();
+                            EV << "msg delay: " << delay << endl;
+                            emit(timeSignal,delay);
+
+                            Coord ueCoord = cainmsg->getSenderCoord();
+                            Coord thisCoord = baseMobility->getCurrentPosition();
+                            dist = thisCoord.distance(ueCoord);
+                            emit(distSignal,dist);
+
+                            if(!droneAddr.isUnspecified()){
+                                cainmsg->setCainDestAddr(droneAddr);
+                                cainmsg->setDestAddr(droneAddr);
+                                cainmsg->setSourceAddr(getSelfIPAddress());
+
+                                int droneDistMapsize = droneDistMap->size();
+                                if(droneDistMapsize!=0){
+                                    bool decision = calculateDroneDecision(cainmsg->getCainDestAddr());
+                                    if(decision){
+                                        sendCainMsg(cainmsg,1,0);
+                                    }else
+                                        sendCainMsg(cainmsg,1,0);
+
+                                }
+                            }
+
+                        }else{
+                            if(chAddr.isUnspecified())
+                                cainmsg->setCainDestAddr(bestHopAddr->first);
+                            else
+                                cainmsg->setCainDestAddr(chAddr/*bestHopAddr->first*/);
+                            //cainmsg->setHopCount(hopCount-1);
+                            cainmsg->setSourceAddr(getSelfIPAddress());
+                            sentCainFwdMsg++;
+                            emit(sentCainFwdMsgSignal,sentCainFwdMsg);
+                            sendCainMsg(cainmsg, 2,0);
+                        }
+                    }
+                }
             }
         }
     }
@@ -2658,7 +2652,7 @@ void WirelessRouting::handleCainLAR(const Ptr<CAINMSG>& cainmsg){
                 satDist = thisCoord.distance(ueCoord);
                 emit(satDistSignal,satDist);
 
-            }else{
+        }else{
 
             if(!strcmp(this->getParentModule()->getName(),"drone") && getSelfIPAddress() == cainmsg->getCainDestAddr()){
                 EV << "Drone receiving message" << endl;
@@ -2743,11 +2737,9 @@ void WirelessRouting::handleCainLAR(const Ptr<CAINMSG>& cainmsg){
                     emit(recLarMsgSignal,recLarMsg);
                     msgHops=cainmsg->getHops();
                     emit(hopCountSignal,msgHops);
-
-
                     simtime_t arrivalTime = simTime();
                     delay=arrivalTime-cainmsg->getTimeInit();
-                    EV << "msg delay: " << delay << endl;
+
                     emit(timeSignal,delay);
                     if(!droneAddr.isUnspecified()){
                         cainmsg->setCainDestAddr(droneAddr);
@@ -3643,7 +3635,7 @@ void WirelessRouting::calculate_drone_q_matrix(){
     }
 }
 
-int WirelessRouting::calculateDnnDecision(L3Address cainDest){
+void WirelessRouting::calculateDnnDecision(L3Address cainDest){
     for(int i = 0; i<100; i++){
         int state = get_coverage_state(cainDest);
         double dnnDist;
