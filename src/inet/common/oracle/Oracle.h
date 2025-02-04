@@ -95,6 +95,7 @@ public:
         this->chCandidate->first = candidate;
         this->chCandidate->second = battery;
     }
+    void shutDownSimulation();
 
     void setAntennaAddress(L3Address antennaAddr);
     L3Address getAntennaAddress();

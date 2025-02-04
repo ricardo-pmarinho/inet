@@ -172,6 +172,7 @@ class CAINMSG extends HeartBeat{
     string msgId;
     double distance;//stores the distance between sender and receiver (necessary?)
     simtime_t timeInit;
+    double pheromone;
 }
 
 class Rrep extends HeartBeat{

@@ -97,25 +97,5 @@ network simpleNetwork
             parameters:
                 @display("p=300,150");
         }
-    //        host0: sixgenNode {
-    //            parameters:
-    //                @display("p=175,300");
-    //        }
-    //        host1: sixgenNode {
-    //            parameters:
-    //                @display("p=300,500");
-    //        }
-    //        host2: sixgenNode {
-    //            parameters:
-    //                @display("p=300,100");
-    //        }
-    //        host3: sixgenNode {
-    //            parameters:
-    //                @display("p=500,300");
-    //        }
-    //        host4: sixgenNode {
-    //            parameters:
-    //                @display("p=700,300");
-    //        }
     connections allowunconnected:
 }

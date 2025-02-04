@@ -378,7 +378,7 @@ unsigned int IgmpMessageDescriptor::getFieldTypeFlags(int field) const
         field -= basedesc->getFieldCount();
     }
     static unsigned int fieldTypeFlags[] = {
-        FD_ISEDITABLE,    // FIELD_type
+        0,    // FIELD_type
         FD_ISEDITABLE,    // FIELD_crc
         0,    // FIELD_crcMode
     };
@@ -522,7 +522,6 @@ bool IgmpMessageDescriptor::setFieldValueAsString(void *object, int field, int i
     }
     IgmpMessage *pp = (IgmpMessage *)object; (void)pp;
     switch (field) {
-        case FIELD_type: pp->setType((inet::IgmpType)string2enum(value, "inet::IgmpType")); return true;
         case FIELD_crc: pp->setCrc(string2ulong(value)); return true;
         default: return false;
     }

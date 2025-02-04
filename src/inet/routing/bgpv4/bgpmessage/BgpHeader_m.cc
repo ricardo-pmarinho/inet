@@ -789,7 +789,7 @@ unsigned int BgpHeaderDescriptor::getFieldTypeFlags(int field) const
     static unsigned int fieldTypeFlags[] = {
         FD_ISARRAY | FD_ISEDITABLE,    // FIELD_marker
         FD_ISEDITABLE,    // FIELD_totalLength
-        FD_ISEDITABLE,    // FIELD_type
+        0,    // FIELD_type
     };
     return (field >= 0 && field < 3) ? fieldTypeFlags[field] : 0;
 }
@@ -927,7 +927,6 @@ bool BgpHeaderDescriptor::setFieldValueAsString(void *object, int field, int i, 
     switch (field) {
         case FIELD_marker: pp->setMarker(i,string2ulong(value)); return true;
         case FIELD_totalLength: pp->setTotalLength(string2ulong(value)); return true;
-        case FIELD_type: pp->setType((inet::bgp::BgpType)string2enum(value, "inet::bgp::BgpType")); return true;
         default: return false;
     }
 }
@@ -2585,7 +2584,7 @@ unsigned int BgpUpdatePathAttributesDescriptor::getFieldTypeFlags(int field) con
         FD_ISEDITABLE,    // FIELD_partialBit
         FD_ISEDITABLE,    // FIELD_extendedLengthBit
         FD_ISEDITABLE,    // FIELD_reserved
-        FD_ISEDITABLE,    // FIELD_typeCode
+        0,    // FIELD_typeCode
         FD_ISEDITABLE,    // FIELD_length
     };
     return (field >= 0 && field < 7) ? fieldTypeFlags[field] : 0;
@@ -2742,7 +2741,6 @@ bool BgpUpdatePathAttributesDescriptor::setFieldValueAsString(void *object, int 
         case FIELD_partialBit: pp->setPartialBit(string2bool(value)); return true;
         case FIELD_extendedLengthBit: pp->setExtendedLengthBit(string2bool(value)); return true;
         case FIELD_reserved: pp->setReserved(string2ulong(value)); return true;
-        case FIELD_typeCode: pp->setTypeCode((inet::bgp::BgpUpdateAttributeTypeCode)string2enum(value, "inet::bgp::BgpUpdateAttributeTypeCode")); return true;
         case FIELD_length: pp->setLength(string2ulong(value)); return true;
         default: return false;
     }

@@ -1189,7 +1189,7 @@ unsigned int HelloOptionDescriptor::getFieldTypeFlags(int field) const
         field -= basedesc->getFieldCount();
     }
     static unsigned int fieldTypeFlags[] = {
-        FD_ISEDITABLE,    // FIELD_type
+        0,    // FIELD_type
     };
     return (field >= 0 && field < 1) ? fieldTypeFlags[field] : 0;
 }
@@ -1316,7 +1316,6 @@ bool HelloOptionDescriptor::setFieldValueAsString(void *object, int field, int i
     }
     HelloOption *pp = (HelloOption *)object; (void)pp;
     switch (field) {
-        case FIELD_type: pp->setType((inet::PimHelloOptionType)string2enum(value, "inet::PimHelloOptionType")); return true;
         default: return false;
     }
 }
@@ -3068,7 +3067,7 @@ unsigned int PimPacketDescriptor::getFieldTypeFlags(int field) const
     }
     static unsigned int fieldTypeFlags[] = {
         FD_ISEDITABLE,    // FIELD_version
-        FD_ISEDITABLE,    // FIELD_type
+        0,    // FIELD_type
         FD_ISEDITABLE,    // FIELD_reserved
         FD_ISEDITABLE,    // FIELD_crc
         0,    // FIELD_crcMode
@@ -3222,7 +3221,6 @@ bool PimPacketDescriptor::setFieldValueAsString(void *object, int field, int i, 
     PimPacket *pp = (PimPacket *)object; (void)pp;
     switch (field) {
         case FIELD_version: pp->setVersion(string2long(value)); return true;
-        case FIELD_type: pp->setType((inet::PimPacketType)string2enum(value, "inet::PimPacketType")); return true;
         case FIELD_reserved: pp->setReserved(string2long(value)); return true;
         case FIELD_crc: pp->setCrc(string2ulong(value)); return true;
         default: return false;

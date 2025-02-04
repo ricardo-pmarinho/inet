@@ -59,6 +59,8 @@ private:
     vector<L3Address>* sprayNWaitNeighb;
     std::string rl_type=getModuleByPath("simpleNetwork")->par("rl_type");
     double alpha = getModuleByPath("simpleNetwork")->par("alphaRl");
+    double phero = 0.0; //node's pheromone
+    double probPhero = 0.0;
     dnn* network;
     dnn* droneNetwork;
     int chBattery = 0;
@@ -109,6 +111,7 @@ private:
     map<L3Address,pair<int,bool>> *connectedDevs; //if device is a CH, stores the connected devices to it
     map<L3Address,int> *newConnectedDevs; //a backup for the case that the connected devices map is not update
     map<L3Address,std::string> *recFwdMessages; //stores the received messages' id
+    map<L3Address,double> *neighPherom; //stores the neighbors Pheromones
     list<std::string> *sentMessages; //stores the sent messages' id
     vector<int> *fwdAck; //vector to store the sequence number of the fwd messages that were not acked yet
     vector<int> *reqAck; //vector to store the sequence number of the req messages that were not acked yet
@@ -179,6 +182,7 @@ private:
     simsignal_t recSatMsgSignal;
     simsignal_t droneDistSignal;
     simsignal_t satDistSignal;
+    simsignal_t pheromoneSignal;
     long numConnectedDevs = 0;
     long cainMsg = 0;
     long recCainFwdMsg = 0;
@@ -220,6 +224,7 @@ private:
     long recSatMsg=0;
     double droneDist = 0;
     double satDist = 0;
+    long perhomoneS = 0;
 
     simtime_t meanDelay=0;
     unsigned int qtdMsg=0;
@@ -424,6 +429,7 @@ private:
     void handleDroneMsg(const Ptr<DRONEMSG>& droneMsg);
     void handleWeightMsg(const Ptr<FLWEIGHT>& antennaMsg);
     void recLeachMsg(L3Address neighAddr, const Ptr<SNOOPHB>& snoop);
+    void calcPheromone(L3Address neighAddr, const Ptr<CAINMSG>& cainmsg);
     void recLeachRespMsg(const Ptr<RESPHB>& respMsg);
     void chDecision();
     void resetLeachCalculation();

@@ -2242,7 +2242,7 @@ unsigned int UdpSetOptionCommandDescriptor::getFieldTypeFlags(int field) const
         field -= basedesc->getFieldCount();
     }
     static unsigned int fieldTypeFlags[] = {
-        FD_ISEDITABLE,    // FIELD_optionCode
+        0,    // FIELD_optionCode
     };
     return (field >= 0 && field < 1) ? fieldTypeFlags[field] : 0;
 }
@@ -2369,7 +2369,6 @@ bool UdpSetOptionCommandDescriptor::setFieldValueAsString(void *object, int fiel
     }
     UdpSetOptionCommand *pp = (UdpSetOptionCommand *)object; (void)pp;
     switch (field) {
-        case FIELD_optionCode: pp->setOptionCode((inet::UdpSetOptionSubcode)string2enum(value, "inet::UdpSetOptionSubcode")); return true;
         default: return false;
     }
 }
@@ -7009,7 +7008,7 @@ unsigned int UdpSetMulticastSourceFilterCommandDescriptor::getFieldTypeFlags(int
     static unsigned int fieldTypeFlags[] = {
         FD_ISEDITABLE,    // FIELD_interfaceId
         0,    // FIELD_multicastAddr
-        FD_ISEDITABLE,    // FIELD_filterMode
+        0,    // FIELD_filterMode
         FD_ISARRAY,    // FIELD_sourceList
     };
     return (field >= 0 && field < 4) ? fieldTypeFlags[field] : 0;
@@ -7151,7 +7150,6 @@ bool UdpSetMulticastSourceFilterCommandDescriptor::setFieldValueAsString(void *o
     UdpSetMulticastSourceFilterCommand *pp = (UdpSetMulticastSourceFilterCommand *)object; (void)pp;
     switch (field) {
         case FIELD_interfaceId: pp->setInterfaceId(string2long(value)); return true;
-        case FIELD_filterMode: pp->setFilterMode((inet::UdpSourceFilterMode)string2enum(value, "inet::UdpSourceFilterMode")); return true;
         default: return false;
     }
 }

@@ -451,7 +451,7 @@ unsigned int IcmpHeaderDescriptor::getFieldTypeFlags(int field) const
         field -= basedesc->getFieldCount();
     }
     static unsigned int fieldTypeFlags[] = {
-        FD_ISEDITABLE,    // FIELD_type
+        0,    // FIELD_type
         FD_ISEDITABLE,    // FIELD_code
         FD_ISEDITABLE,    // FIELD_chksum
         0,    // FIELD_crcMode
@@ -600,7 +600,6 @@ bool IcmpHeaderDescriptor::setFieldValueAsString(void *object, int field, int i,
     }
     IcmpHeader *pp = (IcmpHeader *)object; (void)pp;
     switch (field) {
-        case FIELD_type: pp->setType((inet::IcmpType)string2enum(value, "inet::IcmpType")); return true;
         case FIELD_code: pp->setCode(string2long(value)); return true;
         case FIELD_chksum: pp->setChksum(string2long(value)); return true;
         default: return false;

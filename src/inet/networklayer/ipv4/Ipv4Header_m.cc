@@ -1699,7 +1699,7 @@ unsigned int Ipv4OptionTimestampDescriptor::getFieldTypeFlags(int field) const
         field -= basedesc->getFieldCount();
     }
     static unsigned int fieldTypeFlags[] = {
-        FD_ISEDITABLE,    // FIELD_flag
+        0,    // FIELD_flag
         FD_ISEDITABLE,    // FIELD_overflow
         FD_ISEDITABLE,    // FIELD_nextIdx
         FD_ISARRAY,    // FIELD_recordAddress
@@ -1848,7 +1848,6 @@ bool Ipv4OptionTimestampDescriptor::setFieldValueAsString(void *object, int fiel
     }
     Ipv4OptionTimestamp *pp = (Ipv4OptionTimestamp *)object; (void)pp;
     switch (field) {
-        case FIELD_flag: pp->setFlag((inet::TimestampFlag)string2enum(value, "inet::TimestampFlag")); return true;
         case FIELD_overflow: pp->setOverflow(string2long(value)); return true;
         case FIELD_nextIdx: pp->setNextIdx(string2long(value)); return true;
         default: return false;

@@ -390,7 +390,7 @@ unsigned int CsmaCaMacHeaderDescriptor::getFieldTypeFlags(int field) const
         field -= basedesc->getFieldCount();
     }
     static unsigned int fieldTypeFlags[] = {
-        FD_ISEDITABLE,    // FIELD_type
+        0,    // FIELD_type
         FD_ISEDITABLE,    // FIELD_headerLengthField
         0,    // FIELD_transmitterAddress
         0,    // FIELD_receiverAddress
@@ -532,7 +532,6 @@ bool CsmaCaMacHeaderDescriptor::setFieldValueAsString(void *object, int field, i
     }
     CsmaCaMacHeader *pp = (CsmaCaMacHeader *)object; (void)pp;
     switch (field) {
-        case FIELD_type: pp->setType((inet::CsmaCaMacHeaderType)string2enum(value, "inet::CsmaCaMacHeaderType")); return true;
         case FIELD_headerLengthField: pp->setHeaderLengthField(string2ulong(value)); return true;
         default: return false;
     }

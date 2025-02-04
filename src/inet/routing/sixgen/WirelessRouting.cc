@@ -148,6 +148,7 @@ void WirelessRouting::initialize(int stage)
         recSatMsgSignal = registerSignal("recSatMsgSignal");
         droneDistSignal = registerSignal("droneDistSignal");
         satDistSignal = registerSignal("satDistSignal");
+        pheromoneSignal = registerSignal("pheromoneSignal");
 
     }
     else if (stage == INITSTAGE_ROUTING_PROTOCOLS) {
@@ -179,6 +180,7 @@ void WirelessRouting::initialize(int stage)
         newConnectedDevs = new map<L3Address,int>();
         connectedDevs = new map<L3Address,pair<int,bool>>();
         recFwdMessages = new map<L3Address,std::string>();
+        neighPherom = new map<L3Address,double>();
         sentMessages = new list<std::string>();
         leachNeigh = new std::vector<L3Address>();
 
@@ -251,7 +253,7 @@ void WirelessRouting::initialize(int stage)
                 droneQMatrix[i][j]=0;
             }
         }
-        network=network->createDnn(2, 2, 3, 1);
+        network=network->createDnn(3, 2, 3, 1);
         droneNetwork = droneNetwork->createDnn(2,2,3,1);
 //        for(dnn* aux = network; aux->getNeuronConnections()->size()>0;
 //                aux = aux->getNeuronConnections()->operator [](0)){
@@ -332,7 +334,8 @@ void WirelessRouting::handleMessageWhenUp(cMessage *msg)
         }
         else if (msg == counterTimer) {
             scheduleAt(simTime() + 1, counterTimer);
-            if(this->chAddr == getSelfIPAddress() && getDevBatteryPower() < batteryThresh){
+            this->phero*=0.9;
+            /*if(this->chAddr == getSelfIPAddress() && getDevBatteryPower() < batteryThresh){
                 bool backoffEnabled = getModuleByPath("simpleNetwork")->par("backoffEnabled");
                 std::string netType = getModuleByPath("simpleNetwork")->par("networkType");
                 if(netType == "CAIN"){
@@ -343,14 +346,20 @@ void WirelessRouting::handleMessageWhenUp(cMessage *msg)
                         scheduleAt(simTime()+backoff, chInfo);
                     }else
                         scheduleAt(simTime(), chInfo);
-                }else
-                    scheduleAt(simTime(), chInfo);
-            }
+                }else*/
+            if(chInfo->isScheduled())
+                cancelEvent(chInfo);
+            scheduleAt(simTime()+1, chInfo);
+            //}
+            this->phero = getDevBatteryPower()/neighDistMean;
             timeCounter++;
             if(timeCounter == 5){
                 timeCounter=0;
                 com_range=0;
                 hop_range=0;
+            }
+            if(lround(simTime().dbl())>=176){
+                //oracle_->shutDownSimulation();
             }
         }else if(msg == sendFlAvgWeights){
 
@@ -973,6 +982,7 @@ const Ptr<CAINMSG> WirelessRouting::createCainMsg(){
     cainMsg->setSourceAddr(getSelfIPAddress());
     cainMsg->setTimeInit(simTime());
     cainMsg->setSenderCoord(baseMobility->getCurrentPosition());
+    cainMsg->setPheromone(this->phero);
     return cainMsg;
 }
 
@@ -1809,6 +1819,7 @@ void WirelessRouting::handleSnooping(const Ptr<SNOOPHB>& snoop, const L3Address&
     neighborBattery->operator [](sourceAddr)=snoop->getBatteryPercent();
 
     recLeachMsg(sourceAddr, snoop);
+    //calcPheromone(sourceAddr, snoop);
 //    updateChCandidate(sourceAddr, snoop->getBatteryPercent(),snoop->getMsgCoord());
 
     if (simTime() > rebootTime + deletePeriod || rebootTime == 0) {
@@ -1873,6 +1884,7 @@ void WirelessRouting::handleCainFWD(const Ptr<CAINMSG>& cainmsg){
     EV << "CAIN destination: " << cainmsg->getCainDestAddr() << endl;
     EV << "Self ipAddr: " << getSelfIPAddress() << endl;
 
+    calcPheromone(cainmsg->getSourceAddr(),cainmsg);
     calculate_q_matrix();
     std::string netType = getModuleByPath("simpleNetwork")->par("networkType");
     if(netType == "SC" || netType == "EECRM"){
@@ -1909,6 +1921,8 @@ void WirelessRouting::handleCainFWD(const Ptr<CAINMSG>& cainmsg){
             Coord thisCoord = baseMobility->getCurrentPosition();
             droneDist = thisCoord.distance(ueCoord);
             emit(droneDistSignal,droneDist);
+
+            endSimulation();
 
             recDroneMsg++;
             emit(recDroneMsgSignal,recDroneMsg);
@@ -2181,6 +2195,7 @@ void WirelessRouting::handleDroneMsg(const Ptr<DRONEMSG>& droneMsg){
     EV << "Drone message arriving with address: " << droneMsg->getSourceAddr() << endl;
     EV << "This addr: " << getSelfIPAddress() << endl;
     EV << "ch addr " << chAddr << endl;
+    endSimulation();
     if(!strcmp(this->getParentModule()->getName(),"host")){
         //it is a regular node: the strcmp returns 1
 
@@ -2996,7 +3011,28 @@ void WirelessRouting::recLeachMsg(L3Address neighAddr, const Ptr<SNOOPHB>& snoop
     }
 }
 
-void WirelessRouting::recLeachRespMsg(const Ptr<RESPHB>& respMsg){
+void WirelessRouting::calcPheromone(L3Address neighAddr, const Ptr<CAINMSG>& cainmsg){
+    if(cainmsg->getPheromone()!=0){
+        EV << "This phero " << cainmsg->getPheromone() << endl;
+        neighPherom->operator [](neighAddr) = cainmsg->getPheromone();
+        EV << neighAddr << endl;
+        EV << neighPherom->operator [](neighAddr) << endl;
+        map<L3Address,double>::iterator connectedIt = neighPherom->begin();
+        double sumPhero=0.0;
+        if(!neighPherom->empty()){
+            for(; connectedIt != neighPherom->end(); connectedIt++){
+                EV << "neigh phero " << neighPherom->operator [](connectedIt->first) << endl;
+                sumPhero+=neighPherom->operator [](connectedIt->first);
+            }
+            EV << "sumPhero " << sumPhero << endl;
+            probPhero=this->phero/(sumPhero);
+            perhomoneS=this->phero;
+            emit(pheromoneSignal, perhomoneS);
+        }
+    }
+}
+
+/*void WirelessRouting::recLeachRespMsg(const Ptr<RESPHB>& respMsg){
     //when the message has the two hop information
     int neighBattery = respMsg->getBatteryPercent();
     Coord senderCoord = respMsg->getSenderCoord();
@@ -3014,8 +3050,9 @@ void WirelessRouting::recLeachRespMsg(const Ptr<RESPHB>& respMsg){
         neighDistMean*=neighNum;
         neighDistMean+=dist*0.02;
         neighDistMean/=(neighNum+1);
+        phero = getDevBatteryPower()/neighDistMean;
     }
-}
+}*/
 
 void WirelessRouting::chDecision(){
     //reset CH address for the next round
@@ -3644,7 +3681,7 @@ void WirelessRouting::calculateDnnDecision(L3Address cainDest){
             dnnDist = calculateDnnDist(state, distMap->at(cainDest),rl_type);
         else
             dnnDist = calculateDnnDist(state, hopMap->at(cainDest),rl_type);
-        std::vector<bool> *decisionVect = network->calculateDnn(dnnDist, meanDelay.dbl()*pow(10,6));
+        std::vector<bool> *decisionVect = network->calculateDnn(dnnDist, meanDelay.dbl()*pow(10,6),probPhero);
         int decision;
 
         if(decisionVect->operator [](0)){//true

@@ -387,7 +387,7 @@ unsigned int HeartBeatDescriptor::getFieldTypeFlags(int field) const
         field -= basedesc->getFieldCount();
     }
     static unsigned int fieldTypeFlags[] = {
-        FD_ISEDITABLE,    // FIELD_packetType
+        0,    // FIELD_packetType
     };
     return (field >= 0 && field < 1) ? fieldTypeFlags[field] : 0;
 }
@@ -514,7 +514,6 @@ bool HeartBeatDescriptor::setFieldValueAsString(void *object, int field, int i, 
     }
     HeartBeat *pp = (HeartBeat *)object; (void)pp;
     switch (field) {
-        case FIELD_packetType: pp->setPacketType((inet::wirelessrouting::heartBeatType)string2enum(value, "inet::wirelessrouting::heartBeatType")); return true;
         default: return false;
     }
 }
@@ -3197,6 +3196,7 @@ void CAINMSG::copy(const CAINMSG& other)
     this->msgId = other.msgId;
     this->distance = other.distance;
     this->timeInit = other.timeInit;
+    this->pheromone = other.pheromone;
 }
 
 void CAINMSG::parsimPack(omnetpp::cCommBuffer *b) const
@@ -3222,6 +3222,7 @@ void CAINMSG::parsimPack(omnetpp::cCommBuffer *b) const
     doParsimPacking(b,this->msgId);
     doParsimPacking(b,this->distance);
     doParsimPacking(b,this->timeInit);
+    doParsimPacking(b,this->pheromone);
 }
 
 void CAINMSG::parsimUnpack(omnetpp::cCommBuffer *b)
@@ -3247,6 +3248,7 @@ void CAINMSG::parsimUnpack(omnetpp::cCommBuffer *b)
     doParsimUnpacking(b,this->msgId);
     doParsimUnpacking(b,this->distance);
     doParsimUnpacking(b,this->timeInit);
+    doParsimUnpacking(b,this->pheromone);
 }
 
 unsigned int CAINMSG::getHopCount() const
@@ -3469,6 +3471,17 @@ void CAINMSG::setTimeInit(omnetpp::simtime_t timeInit)
     this->timeInit = timeInit;
 }
 
+double CAINMSG::getPheromone() const
+{
+    return this->pheromone;
+}
+
+void CAINMSG::setPheromone(double pheromone)
+{
+    handleChange();
+    this->pheromone = pheromone;
+}
+
 class CAINMSGDescriptor : public omnetpp::cClassDescriptor
 {
   private:
@@ -3494,6 +3507,7 @@ class CAINMSGDescriptor : public omnetpp::cClassDescriptor
         FIELD_msgId,
         FIELD_distance,
         FIELD_timeInit,
+        FIELD_pheromone,
     };
   public:
     CAINMSGDescriptor();
@@ -3556,7 +3570,7 @@ const char *CAINMSGDescriptor::getProperty(const char *propertyname) const
 int CAINMSGDescriptor::getFieldCount() const
 {
     omnetpp::cClassDescriptor *basedesc = getBaseClassDescriptor();
-    return basedesc ? 20+basedesc->getFieldCount() : 20;
+    return basedesc ? 21+basedesc->getFieldCount() : 21;
 }
 
 unsigned int CAINMSGDescriptor::getFieldTypeFlags(int field) const
@@ -3576,7 +3590,7 @@ unsigned int CAINMSGDescriptor::getFieldTypeFlags(int field) const
         0,    // FIELD_chAddr
         0,    // FIELD_lastAddr
         0,    // FIELD_rrepSource
-        FD_ISEDITABLE,    // FIELD_ackType
+        0,    // FIELD_ackType
         FD_ISEDITABLE,    // FIELD_ackSeqNum
         FD_ISEDITABLE,    // FIELD_seqNum
         FD_ISEDITABLE,    // FIELD_batteryPercent
@@ -3588,8 +3602,9 @@ unsigned int CAINMSGDescriptor::getFieldTypeFlags(int field) const
         FD_ISEDITABLE,    // FIELD_msgId
         FD_ISEDITABLE,    // FIELD_distance
         0,    // FIELD_timeInit
+        FD_ISEDITABLE,    // FIELD_pheromone
     };
-    return (field >= 0 && field < 20) ? fieldTypeFlags[field] : 0;
+    return (field >= 0 && field < 21) ? fieldTypeFlags[field] : 0;
 }
 
 const char *CAINMSGDescriptor::getFieldName(int field) const
@@ -3621,8 +3636,9 @@ const char *CAINMSGDescriptor::getFieldName(int field) const
         "msgId",
         "distance",
         "timeInit",
+        "pheromone",
     };
-    return (field >= 0 && field < 20) ? fieldNames[field] : nullptr;
+    return (field >= 0 && field < 21) ? fieldNames[field] : nullptr;
 }
 
 int CAINMSGDescriptor::findField(const char *fieldName) const
@@ -3649,6 +3665,7 @@ int CAINMSGDescriptor::findField(const char *fieldName) const
     if (fieldName[0] == 'm' && strcmp(fieldName, "msgId") == 0) return base+17;
     if (fieldName[0] == 'd' && strcmp(fieldName, "distance") == 0) return base+18;
     if (fieldName[0] == 't' && strcmp(fieldName, "timeInit") == 0) return base+19;
+    if (fieldName[0] == 'p' && strcmp(fieldName, "pheromone") == 0) return base+20;
     return basedesc ? basedesc->findField(fieldName) : -1;
 }
 
@@ -3681,8 +3698,9 @@ const char *CAINMSGDescriptor::getFieldTypeString(int field) const
         "string",    // FIELD_msgId
         "double",    // FIELD_distance
         "omnetpp::simtime_t",    // FIELD_timeInit
+        "double",    // FIELD_pheromone
     };
-    return (field >= 0 && field < 20) ? fieldTypeStrings[field] : nullptr;
+    return (field >= 0 && field < 21) ? fieldTypeStrings[field] : nullptr;
 }
 
 const char **CAINMSGDescriptor::getFieldPropertyNames(int field) const
@@ -3776,6 +3794,7 @@ std::string CAINMSGDescriptor::getFieldValueAsString(void *object, int field, in
         case FIELD_msgId: return oppstring2string(pp->getMsgId());
         case FIELD_distance: return double2string(pp->getDistance());
         case FIELD_timeInit: return simtime2string(pp->getTimeInit());
+        case FIELD_pheromone: return double2string(pp->getPheromone());
         default: return "";
     }
 }
@@ -3791,7 +3810,6 @@ bool CAINMSGDescriptor::setFieldValueAsString(void *object, int field, int i, co
     CAINMSG *pp = (CAINMSG *)object; (void)pp;
     switch (field) {
         case FIELD_hopCount: pp->setHopCount(string2ulong(value)); return true;
-        case FIELD_ackType: pp->setAckType((inet::wirelessrouting::heartBeatType)string2enum(value, "inet::wirelessrouting::heartBeatType")); return true;
         case FIELD_ackSeqNum: pp->setAckSeqNum(string2ulong(value)); return true;
         case FIELD_seqNum: pp->setSeqNum(string2ulong(value)); return true;
         case FIELD_batteryPercent: pp->setBatteryPercent(string2ulong(value)); return true;
@@ -3801,6 +3819,7 @@ bool CAINMSGDescriptor::setFieldValueAsString(void *object, int field, int i, co
         case FIELD_hops: pp->setHops(string2ulong(value)); return true;
         case FIELD_msgId: pp->setMsgId((value)); return true;
         case FIELD_distance: pp->setDistance(string2double(value)); return true;
+        case FIELD_pheromone: pp->setPheromone(string2double(value)); return true;
         default: return false;
     }
 }

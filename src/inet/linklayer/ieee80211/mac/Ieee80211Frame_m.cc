@@ -906,7 +906,7 @@ unsigned int Ieee80211MacHeaderDescriptor::getFieldTypeFlags(int field) const
         field -= basedesc->getFieldCount();
     }
     static unsigned int fieldTypeFlags[] = {
-        FD_ISEDITABLE,    // FIELD_type
+        0,    // FIELD_type
         FD_ISEDITABLE,    // FIELD_toDS
         FD_ISEDITABLE,    // FIELD_fromDS
         FD_ISEDITABLE,    // FIELD_moreFragments
@@ -1093,7 +1093,6 @@ bool Ieee80211MacHeaderDescriptor::setFieldValueAsString(void *object, int field
     }
     Ieee80211MacHeader *pp = (Ieee80211MacHeader *)object; (void)pp;
     switch (field) {
-        case FIELD_type: pp->setType((inet::ieee80211::Ieee80211FrameType)string2enum(value, "inet::ieee80211::Ieee80211FrameType")); return true;
         case FIELD_toDS: pp->setToDS(string2bool(value)); return true;
         case FIELD_fromDS: pp->setFromDS(string2bool(value)); return true;
         case FIELD_moreFragments: pp->setMoreFragments(string2bool(value)); return true;
@@ -2945,7 +2944,7 @@ unsigned int Ieee80211DataHeaderDescriptor::getFieldTypeFlags(int field) const
     }
     static unsigned int fieldTypeFlags[] = {
         0,    // FIELD_address4
-        FD_ISEDITABLE,    // FIELD_ackPolicy
+        0,    // FIELD_ackPolicy
         FD_ISEDITABLE,    // FIELD_tid
         FD_ISEDITABLE,    // FIELD_aMsduPresent
     };
@@ -3086,7 +3085,6 @@ bool Ieee80211DataHeaderDescriptor::setFieldValueAsString(void *object, int fiel
     }
     Ieee80211DataHeader *pp = (Ieee80211DataHeader *)object; (void)pp;
     switch (field) {
-        case FIELD_ackPolicy: pp->setAckPolicy((inet::ieee80211::AckPolicy)string2enum(value, "inet::ieee80211::AckPolicy")); return true;
         case FIELD_tid: pp->setTid(string2ulong(value)); return true;
         case FIELD_aMsduPresent: pp->setAMsduPresent(string2bool(value)); return true;
         default: return false;

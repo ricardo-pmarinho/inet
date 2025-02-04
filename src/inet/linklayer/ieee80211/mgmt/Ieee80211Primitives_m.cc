@@ -627,7 +627,7 @@ unsigned int Ieee80211PrimConfirmDescriptor::getFieldTypeFlags(int field) const
         field -= basedesc->getFieldCount();
     }
     static unsigned int fieldTypeFlags[] = {
-        FD_ISEDITABLE,    // FIELD_resultCode
+        0,    // FIELD_resultCode
     };
     return (field >= 0 && field < 1) ? fieldTypeFlags[field] : 0;
 }
@@ -754,7 +754,6 @@ bool Ieee80211PrimConfirmDescriptor::setFieldValueAsString(void *object, int fie
     }
     Ieee80211PrimConfirm *pp = (Ieee80211PrimConfirm *)object; (void)pp;
     switch (field) {
-        case FIELD_resultCode: pp->setResultCode((inet::ieee80211::Ieee80211PrimResultCode)string2enum(value, "inet::ieee80211::Ieee80211PrimResultCode")); return true;
         default: return false;
     }
 }
@@ -1084,7 +1083,7 @@ unsigned int Ieee80211Prim_ScanRequestDescriptor::getFieldTypeFlags(int field) c
         field -= basedesc->getFieldCount();
     }
     static unsigned int fieldTypeFlags[] = {
-        FD_ISEDITABLE,    // FIELD_BSSType
+        0,    // FIELD_BSSType
         0,    // FIELD_BSSID
         FD_ISEDITABLE,    // FIELD_SSID
         FD_ISEDITABLE,    // FIELD_activeScan
@@ -1247,7 +1246,6 @@ bool Ieee80211Prim_ScanRequestDescriptor::setFieldValueAsString(void *object, in
     }
     Ieee80211Prim_ScanRequest *pp = (Ieee80211Prim_ScanRequest *)object; (void)pp;
     switch (field) {
-        case FIELD_BSSType: pp->setBSSType((inet::ieee80211::Ieee80211BssType)string2enum(value, "inet::ieee80211::Ieee80211BssType")); return true;
         case FIELD_SSID: pp->setSSID((value)); return true;
         case FIELD_activeScan: pp->setActiveScan(string2bool(value)); return true;
         case FIELD_channelList: pp->setChannelList(i,string2long(value)); return true;

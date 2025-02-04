@@ -339,6 +339,14 @@ void Oracle::checkShutdownTime(int numNodes){
      }
 }
 
+void Oracle::shutDownSimulation(){
+
+    simulationEnd = lround(simTime().dbl());
+
+    emit(simulationEndSignal,simulationEnd);
+    endSimulation();
+}
+
 void Oracle::insertRecNode(L3Address nodeAddr){
     this->recNodes->operator [](nodeAddr)=true;
 }

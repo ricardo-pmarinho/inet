@@ -122,7 +122,7 @@ void dnn::setNeuronTotalWeights(std::vector<float> *weightVector){
 
 
 /*updates begin*/
-std::vector<bool>* dnn::calculateDnn(double dist, double delay){
+std::vector<bool>* dnn::calculateDnn(double dist, double delay,double probPhero){
     //this dnn is the initial one
     this->connections->operator [](0)->values->push_back(dist);
     this->connections->operator [](0)->recWeights->push_back(1);
@@ -130,6 +130,9 @@ std::vector<bool>* dnn::calculateDnn(double dist, double delay){
     this->connections->operator [](1)->values->push_back(delay);
     this->connections->operator [](1)->recWeights->push_back(1);
     this->connections->operator [](1)->functionValue=delay;
+    this->connections->operator [](2)->values->push_back(probPhero);
+    this->connections->operator [](2)->recWeights->push_back(1);
+    this->connections->operator [](2)->functionValue=probPhero;
 
     dnn* aux = this;
     for(;aux->connections->size()>0;aux=aux->connections->operator [](0)){

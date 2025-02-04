@@ -416,7 +416,7 @@ unsigned int Icmpv6HeaderDescriptor::getFieldTypeFlags(int field) const
         field -= basedesc->getFieldCount();
     }
     static unsigned int fieldTypeFlags[] = {
-        FD_ISEDITABLE,    // FIELD_type
+        0,    // FIELD_type
         FD_ISEDITABLE,    // FIELD_chksum
         0,    // FIELD_crcMode
     };
@@ -560,7 +560,6 @@ bool Icmpv6HeaderDescriptor::setFieldValueAsString(void *object, int field, int 
     }
     Icmpv6Header *pp = (Icmpv6Header *)object; (void)pp;
     switch (field) {
-        case FIELD_type: pp->setType((inet::Icmpv6Type)string2enum(value, "inet::Icmpv6Type")); return true;
         case FIELD_chksum: pp->setChksum(string2long(value)); return true;
         default: return false;
     }
@@ -726,7 +725,7 @@ unsigned int Icmpv6DestUnreachableMsgDescriptor::getFieldTypeFlags(int field) co
         field -= basedesc->getFieldCount();
     }
     static unsigned int fieldTypeFlags[] = {
-        FD_ISEDITABLE,    // FIELD_code
+        0,    // FIELD_code
     };
     return (field >= 0 && field < 1) ? fieldTypeFlags[field] : 0;
 }
@@ -853,7 +852,6 @@ bool Icmpv6DestUnreachableMsgDescriptor::setFieldValueAsString(void *object, int
     }
     Icmpv6DestUnreachableMsg *pp = (Icmpv6DestUnreachableMsg *)object; (void)pp;
     switch (field) {
-        case FIELD_code: pp->setCode((inet::Icmpv6DestUnav)string2enum(value, "inet::Icmpv6DestUnav")); return true;
         default: return false;
     }
 }
@@ -1324,7 +1322,7 @@ unsigned int Icmpv6TimeExceededMsgDescriptor::getFieldTypeFlags(int field) const
         field -= basedesc->getFieldCount();
     }
     static unsigned int fieldTypeFlags[] = {
-        FD_ISEDITABLE,    // FIELD_code
+        0,    // FIELD_code
     };
     return (field >= 0 && field < 1) ? fieldTypeFlags[field] : 0;
 }
@@ -1451,7 +1449,6 @@ bool Icmpv6TimeExceededMsgDescriptor::setFieldValueAsString(void *object, int fi
     }
     Icmpv6TimeExceededMsg *pp = (Icmpv6TimeExceededMsg *)object; (void)pp;
     switch (field) {
-        case FIELD_code: pp->setCode((inet::Icmpv6TimeEx)string2enum(value, "inet::Icmpv6TimeEx")); return true;
         default: return false;
     }
 }
@@ -1616,7 +1613,7 @@ unsigned int Icmpv6ParamProblemMsgDescriptor::getFieldTypeFlags(int field) const
         field -= basedesc->getFieldCount();
     }
     static unsigned int fieldTypeFlags[] = {
-        FD_ISEDITABLE,    // FIELD_code
+        0,    // FIELD_code
     };
     return (field >= 0 && field < 1) ? fieldTypeFlags[field] : 0;
 }
@@ -1743,7 +1740,6 @@ bool Icmpv6ParamProblemMsgDescriptor::setFieldValueAsString(void *object, int fi
     }
     Icmpv6ParamProblemMsg *pp = (Icmpv6ParamProblemMsg *)object; (void)pp;
     switch (field) {
-        case FIELD_code: pp->setCode((inet::Icmpv6ParameterProblem)string2enum(value, "inet::Icmpv6ParameterProblem")); return true;
         default: return false;
     }
 }

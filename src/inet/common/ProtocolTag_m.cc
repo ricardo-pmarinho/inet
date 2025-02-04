@@ -880,7 +880,7 @@ unsigned int DispatchProtocolReqDescriptor::getFieldTypeFlags(int field) const
         field -= basedesc->getFieldCount();
     }
     static unsigned int fieldTypeFlags[] = {
-        FD_ISEDITABLE,    // FIELD_servicePrimitive
+        0,    // FIELD_servicePrimitive
     };
     return (field >= 0 && field < 1) ? fieldTypeFlags[field] : 0;
 }
@@ -1007,7 +1007,6 @@ bool DispatchProtocolReqDescriptor::setFieldValueAsString(void *object, int fiel
     }
     DispatchProtocolReq *pp = (DispatchProtocolReq *)object; (void)pp;
     switch (field) {
-        case FIELD_servicePrimitive: pp->setServicePrimitive((inet::ServicePrimitive)string2enum(value, "inet::ServicePrimitive")); return true;
         default: return false;
     }
 }

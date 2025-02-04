@@ -997,6 +997,8 @@ OBJS = \
     $O/inet/routing/rip/RipRouteData.o \
     $O/inet/routing/sixgen/HeartBeatRouteData.o \
     $O/inet/routing/sixgen/WirelessRouting.o \
+    $O/inet/satellite/SatelliteReceiver.o \
+    $O/inet/satellite/SatelliteTransmitter.o \
     $O/inet/transportlayer/base/TransportProtocolBase.o \
     $O/inet/transportlayer/common/CrcMode.o \
     $O/inet/transportlayer/common/L4Tools.o \
