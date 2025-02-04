@@ -21,11 +21,8 @@ import inet.networklayer.configurator.ipv4.Ipv4NetworkConfigurator;
 import inet.networklayer.ipv4.RoutingTableRecorder;
 import inet.physicallayer.unitdisk.UnitDiskRadioMedium;
 import inet.visualizer.integrated.IntegratedVisualizer;
-//import inet.visualizer.integrated.IntegratedCanvasVisualizer;
-//import inet.visualizer.base.SceneOsgVisualizerBase;
 import inet.common.oracle.Oracle;
 import inet.environment.common.PhysicalEnvironment;
-//import inet.mobility.spatial.SpatialMobilityShowcase;
 
 
 network simpleNetwork
