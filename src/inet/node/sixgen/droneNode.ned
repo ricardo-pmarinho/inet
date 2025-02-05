@@ -16,7 +16,7 @@
 package inet.node.sixgen;
 
 import inet.node.inet.WirelessHost;
-import inet.routing.sixgen.wirelessRouting;
+import inet.routing.sixgen.droneRouting;
 
 module droneNode extends WirelessHost{
     parameters:
@@ -25,7 +25,7 @@ module droneNode extends WirelessHost{
         wlan[*].agent.typename = default("");
         forwarding = default(true);
 	submodules:
-		routing : wirelessRouting{
+		routing : droneRouting{
             @display("p=50,50");
         }
     connections:

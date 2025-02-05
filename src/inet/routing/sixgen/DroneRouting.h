@@ -41,6 +41,7 @@ namespace inet {
 namespace dronerouting {
 
 using namespace power;
+using namespace wirelessrouting;
 
 class INET_API DroneRouting : public RoutingProtocolBase, public NetfilterBase::HookBase, public UdpSocket::ICallback, public cListener
 {
@@ -176,7 +177,6 @@ private:
     simsignal_t respMapSizeSignal;
     simsignal_t recWeightMsgSignal;
     simsignal_t recAntennaMsgSignal;
-    simsignal_t sentAntennaMsgSignal;
     simsignal_t recFwdAntennaMsgSignal;
     simsignal_t recDroneMsgSignal;
     simsignal_t recSatMsgSignal;
@@ -218,7 +218,6 @@ private:
     long respMapSize=0;
     long recWeightMsg=0;
     long recAntennaMsg=0;
-    long sentAntennaMsg=0;
     long recFwdAntennaMsg=0;
     long recDroneMsg=0;
     long recSatMsg=0;
@@ -419,10 +418,6 @@ private:
     void handleFwdTimer();
     void handleCainRREQ(const Ptr<CAINMSG>& cainmsg);
     void handleCainRREP(const Ptr<CAINMSG>& cainmsg);
-    void handleSCMSG(const Ptr<CAINMSG>& cainmsg);
-    void handleCainLAR(const Ptr<CAINMSG>& cainmsg);
-    void handleCainSPR(const Ptr<CAINMSG>& cainmsg);
-    void handleCainBRAP(const Ptr<CAINMSG>& cainmsg);
     void handleCainReply(const Ptr<CAINMSG>& cainmsg);
     void handleCainHopCount(const Ptr<CAINMSG>& cainmsg);
     void handleAntennaMsg(const Ptr<ANTENNA>& antennaMsg);
@@ -433,12 +428,6 @@ private:
     void recLeachRespMsg(const Ptr<RESPHB>& respMsg);
     void chDecision();
     void resetLeachCalculation();
-//    void handleRREQ(const Ptr<Rreq>& rreq, const L3Address& sourceAddr, unsigned int timeToLive);
-//    void handleRERR(const Ptr<const Rerr>& rerr, const L3Address& sourceAddr);
-//    void handleHelloMessage(const Ptr<Rrep>& helloMessage);
-//    void handleRREPACK(const Ptr<const RrepAck>& rrepACK, const L3Address& neighborAddr);
-//
-//    /* Control Packet sender methods */
     void sendSnooping(const Ptr<SNOOPHB>& snoop, unsigned int timeToLive);
     void sendResp(const Ptr<RESPHB>& resp, const L3Address& destAddr, unsigned int timeToLive);
     void sendCainMsg(const Ptr<CAINMSG>& cainmsg, unsigned int timeToLive,double delay);

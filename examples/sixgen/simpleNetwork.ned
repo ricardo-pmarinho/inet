@@ -23,6 +23,7 @@ import inet.physicallayer.unitdisk.UnitDiskRadioMedium;
 import inet.visualizer.integrated.IntegratedVisualizer;
 import inet.common.oracle.Oracle;
 import inet.environment.common.PhysicalEnvironment;
+import inet.node.sixgen.droneNode;
 
 
 network simpleNetwork
@@ -47,8 +48,8 @@ network simpleNetwork
         //showcase: SpatialMobilityShowcase {
         //    @display("p=100,381");
         //}
-        drone[numDrone]: sixgenNode {
-            @display("i=misc/node_vs");
+        drone[numDrone]: droneNode {
+            @display("i=misc/drone");
         }
         physicalEnvironment: PhysicalEnvironment {
             @display("p=580,425");

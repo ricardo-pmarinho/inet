@@ -995,6 +995,7 @@ OBJS = \
     $O/inet/routing/rip/RipProtocolDissector.o \
     $O/inet/routing/rip/RipProtocolPrinter.o \
     $O/inet/routing/rip/RipRouteData.o \
+    $O/inet/routing/sixgen/DroneRouting.o \
     $O/inet/routing/sixgen/HeartBeatRouteData.o \
     $O/inet/routing/sixgen/WirelessRouting.o \
     $O/inet/satellite/SatelliteReceiver.o \

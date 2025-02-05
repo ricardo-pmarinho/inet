@@ -1922,7 +1922,6 @@ void WirelessRouting::handleCainFWD(const Ptr<CAINMSG>& cainmsg){
             droneDist = thisCoord.distance(ueCoord);
             emit(droneDistSignal,droneDist);
 
-            endSimulation();
 
             recDroneMsg++;
             emit(recDroneMsgSignal,recDroneMsg);
@@ -2195,22 +2194,14 @@ void WirelessRouting::handleDroneMsg(const Ptr<DRONEMSG>& droneMsg){
     EV << "Drone message arriving with address: " << droneMsg->getSourceAddr() << endl;
     EV << "This addr: " << getSelfIPAddress() << endl;
     EV << "ch addr " << chAddr << endl;
-    endSimulation();
-    if(!strcmp(this->getParentModule()->getName(),"host")){
         //it is a regular node: the strcmp returns 1
 
-        Coord thisCoord = Coord(baseMobility->getCurrentPosition());
-        Coord senderCoord = droneMsg->getSenderCoord();
-        double dist = thisCoord.distance(senderCoord);
-        droneAddr = droneMsg->getSourceAddr();
-        droneDistMap->operator [](droneAddr) = dist;
-    }else if(!strcmp(this->getParentModule()->getName(),"drone")){
+    Coord thisCoord = Coord(baseMobility->getCurrentPosition());
+    Coord senderCoord = droneMsg->getSenderCoord();
+    double dist = thisCoord.distance(senderCoord);
+    droneAddr = droneMsg->getSourceAddr();
+    droneDistMap->operator [](droneAddr) = dist;
 
-        Coord thisCoord = Coord(baseMobility->getCurrentPosition());
-        Coord senderCoord = droneMsg->getSenderCoord();
-        double dist = thisCoord.distance(senderCoord);
-        droneDistMap->operator [](droneMsg->getSourceAddr()) = dist;
-    }
 }
 
 void WirelessRouting::handleWeightMsg(const Ptr<FLWEIGHT>& weightMsg){
@@ -2439,19 +2430,6 @@ void WirelessRouting::handleFwdTimer(){
         }
     }
 }
-
-bool WirelessRouting::findFwdDest(L3Address cainDestAddr){
-    map<L3Address,pair<int,bool>>::iterator connectedIt = connectedDevs->begin();
-    EV << "Connected devices:"<< endl;
-    for(;connectedIt != connectedDevs->end(); connectedIt++){
-        EV << "Device address: " << connectedIt->first << "| battery: " << connectedIt->second.first <<
-                "| Active = " << (connectedIt->second.second ? "True":"False") << endl;;
-        if(cainDestAddr == connectedIt->first)
-            return true;
-    }
-    return false;
-}
-
 
 void WirelessRouting::handleCainRREQ(const Ptr<CAINMSG>& cainmsg){
     EV << "Destined to: " << cainmsg->getDestAddr() << ", initiated by: " << cainmsg->getOriginatorAddr() <<
