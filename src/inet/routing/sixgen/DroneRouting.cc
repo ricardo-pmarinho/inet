@@ -1031,12 +1031,10 @@ void DroneRouting::calcDelayMean(simtime_t msgInit){
 
 void DroneRouting::handleAntennaMsg(const Ptr<ANTENNA>& antennaMsg){
     EV << "antenna message arriving with address: " << antennaMsg->getSourceAddr() << endl;
-    if(strcmp(this->getParentModule()->getName(),"antenna")){
-        //it is a regular node: the strcmp returns 1
-        antennaAddr = antennaMsg->getSourceAddr();
-        recAntennaMsg++;
-        emit(recAntennaMsgSignal,recAntennaMsg);
-    }
+    //it is a regular node: the strcmp returns 1
+    antennaAddr = antennaMsg->getSourceAddr();
+    recAntennaMsg++;
+    emit(recAntennaMsgSignal,recAntennaMsg);
 }
 
 void DroneRouting::handleDroneMsg(const Ptr<DRONEMSG>& droneMsg){
