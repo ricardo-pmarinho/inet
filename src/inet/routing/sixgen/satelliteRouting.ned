@@ -16,10 +16,10 @@ package inet.routing.sixgen;
 
 import inet.applications.contract.IApp;
 
-simple droneRouting like IApp
+simple satelliteRouting like IApp
 {
     parameters:
-        @class("dronerouting::DroneRouting");
+        @class("satelliteRouting::SatelliteRouting");
         @display("i=block/network2");
         string routingTableModule = default("^.ipv4.routingTable");
         string interfaceTableModule = default("^.interfaceTable");

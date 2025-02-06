@@ -51,17 +51,7 @@ private:
     MassMobility* droneMobility = nullptr;
     SimpleEpEnergyStorage* energyStorage = nullptr;
     SimpleEpEnergyManagement* energyManagement = nullptr;
-    Oracle *oracle_ = nullptr;
-    L3Address chAddr;
-    L3Address newChAddr = L3Address("0.0.0.0");
-    pair<L3Address,int> *bestHopAddr;
-    map<L3Address,int> *scNeighbMap;
-    pair<L3Address,float> *bestLarHopAddr;
-    vector<L3Address>* sprayNWaitNeighb;
     std::string rl_type=getModuleByPath("simpleNetwork")->par("rl_type");
-    double alpha = getModuleByPath("simpleNetwork")->par("alphaRl");
-    double phero = 0.0; //node's pheromone
-    double probPhero = 0.0;
     dnn* network;
     dnn* droneNetwork;
     int chBattery = 0;
@@ -446,18 +436,11 @@ private:
     void calcDelayMean(simtime_t msgInit);
 //
     void updateConnectedDevs();
-    int getState(int currState,bool reward);
-    int get_coverage_state(L3Address cain_dest);
     int get_drone_coverage_state(L3Address cain_dest);
-    void calculate_coverage_reward(int state,bool decision,L3Address cain_dest);
     void calculate_drone_coverage_reward(int state,bool decision,L3Address cain_dest);
-    void updateState(int currState, int newState, bool decision);
-    void updatePowerThreshold(int state);
     bool sendMessageML(int state);
     void create_reward_matrix();
-    void calculate_q_matrix();
     void calculate_drone_q_matrix();
-    void calculateDnnDecision(L3Address cainDest);
     bool calculateDroneDecision(L3Address cainDest);
 
     double backoffTimer();

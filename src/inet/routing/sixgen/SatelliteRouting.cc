@@ -13,7 +13,7 @@
 // along with this program.  If not, see http://www.gnu.org/licenses/.
 // 
 
-#include "inet/routing/sixgen/WirelessRouting.h"
+#include "SatelliteRouting.h"
 #include "inet/common/IProtocolRegistrationListener.h"
 #include "inet/common/ModuleAccess.h"
 #include "inet/common/ProtocolTag_m.h"
@@ -34,13 +34,13 @@
 #include <string>
 
 namespace inet {
-namespace wirelessrouting {
+namespace SatelliteRouting {
 
-Define_Module(WirelessRouting);
+Define_Module(SatelliteRouting);
 
 const int KIND_DELAYEDSEND = 100;
 
-void WirelessRouting::initialize(int stage)
+void SatelliteRouting::initialize(int stage)
 {
 
     if (stage == INITSTAGE_ROUTING_PROTOCOLS)
@@ -77,8 +77,6 @@ void WirelessRouting::initialize(int stage)
         localAddTTL = par("localAddTTL");
         jitterPar = &par("jitter");
         periodicJitter = &par("periodicJitter");
-        chTimer = par("chTimer");
-        chDef = par("chDef");
 
         myRouteTimeout = par("myRouteTimeout");
         deletePeriod = par("deletePeriod");
@@ -90,65 +88,15 @@ void WirelessRouting::initialize(int stage)
         counterTimer = new cMessage("CounterTimer");
         rrepAckTimer = new cMessage("RrepAckTimer");
         blacklistTimer = new cMessage("BlackListTimer");
-        chInfo = new cMessage("chInfo");
-        chElection = new cMessage("chElection");
-        chReset = new cMessage("chReset");
-        cainTrigger = new cMessage("cainTrigger");
-        cainNotAck = new cMessage("cainNotAck");
-        cainFwdTimer = new cMessage("cainFwdTimer");
-        conncetedDevTimer = new cMessage("conncetedDevTimer");
-        cainAck = new cMessage("cainAck");
-        endTimer = new cMessage("endTimer");
-        antennaTimer =new cMessage("antennaTimer");
-        droneTimer =new cMessage("droneTimer");
-        sendFlWeights =new cMessage("sendFlWeights");
-        sendFlAvgWeights =new cMessage("sendFlAvgWeights");
-        leachChDecision = new cMessage("leachChDecision");
         if (useHelloMessages)
             helloMsgTimer = new cMessage("HelloMsgTimer");
 
-        cainMsgSignal = registerSignal("cainMsgSignal");
-        connectedDevsSignal = registerSignal("connectedDevsSignal");
         recCainFwdMsgSignal = registerSignal("recCainFwdMsgSignal");
-        sentCainFwdMsgSignal = registerSignal("sentCainFwdMsgSignal");
-        recCainReqMsgSignal = registerSignal("recCainReqMsgSignal");
-        sentCainReqMsgSignal = registerSignal("sentCainReqMsgSignal");
-        recCainRespMsgSignal = registerSignal("recCainRespMsgSignal");
-        sentCainRespMsgSignal = registerSignal("sentCainRespMsgSignal");
-        recCainHopMsgSignal = registerSignal("recCainHopMsgSignal");
-        sentCainHopMsgSignal = registerSignal("sentCainHopMsgSignal");
-        recCainErrMsgSignal = registerSignal("recCainErrMsgSignal");
-        sentCainErrMsgSignal = registerSignal("sentCainErrMsgSignal");
-        sentCainRREQMsgSignal = registerSignal("sentCainRREQMsgSignal");
-        recCainRREQMsgSignal = registerSignal("recCainRREQMsgSignal");
-        sentCainRREPMsgSignal = registerSignal("sentCainRREPMsgSignal");
-        recCainRREPMsgSignal = registerSignal("recCainRREPMsgSignal");
-        recCainRREQFwdMsgSignal = registerSignal("recCainRREQFwdMsgSignal");
-        sentCainRREQFwdMsgSignal = registerSignal("sentCainRREQFwdMsgSignal");
-        sentLarMsgSignal = registerSignal("sentLarMsgSignal");
-        recLarMsgSignal = registerSignal("recLarMsgSignal");
-        sentSprMsgSignal = registerSignal("sentSprMsgSignal");
-        recSprMsgSignal = registerSignal("recSprMsgSignal");
         distSignal = registerSignal("distSignal");
-        timeSignal = registerSignal("timeSignal");
-        batteryDecaySignal = registerSignal("batteryDecaySignal");
-        powerThreshSignal = registerSignal("powerThreshSignal");
-        sentBrapMsgSignal = registerSignal("sentBrapMsgSignal");
-        recBrapMsgSignal = registerSignal("recBrapMsgSignal");
-        nodeEndingSignal = registerSignal("nodeEndingSignal");
-        hopCountSignal = registerSignal("hopCountSignal");
-        sendProbSignal = registerSignal("sendProbSignal");
-        distMapSizeSignal = registerSignal("distMapSizeSignal");
-        respMapSizeSignal = registerSignal("respMapSizeSignal");
-        recWeightMsgSignal = registerSignal("recWeightMsgSignal");
-        recAntennaMsgSignal = registerSignal("recAntennaMsgSignal");
-        sentAntennaMsgSignal = registerSignal("sentAntennaMsgSignal");
-        recFwdAntennaMsgSignal = registerSignal("recFwdAntennaMsgSignal");
         recDroneMsgSignal = registerSignal("recDroneMsgSignal");
         recSatMsgSignal = registerSignal("recSatMsgSignal");
         droneDistSignal = registerSignal("droneDistSignal");
         satDistSignal = registerSignal("satDistSignal");
-        pheromoneSignal = registerSignal("pheromoneSignal");
 
     }
     else if (stage == INITSTAGE_ROUTING_PROTOCOLS) {
@@ -156,46 +104,24 @@ void WirelessRouting::initialize(int stage)
         host->subscribe(linkBrokenSignal, this);
         usingIpv6 = (routingTable->getRouterIdAsGeneric().getType() == L3Address::IPv6);
         neighborBattery = new std::map<L3Address,int>();
-        //if(strcmp(this->getParentModule()->getName(),"drone")){//not a drone
-            baseMobility = check_and_cast<BonnMotionMobility*>(host->getSubmodule("mobility"));
-            energyStorage = check_and_cast<SimpleEpEnergyStorage*>(host->getSubmodule("energyStorage"));
-            energyManagement = check_and_cast<SimpleEpEnergyManagement*>(host->getSubmodule("energyManagement"));
-        //}else
-           // droneMobility = check_and_cast<MassMobility*>(host->getSubmodule("mobility"));
-        powerThresh = par("powerThresh");
-        batteryThresh = par("batteryThresh");
+        baseMobility = check_and_cast<BonnMotionMobility*>(host->getSubmodule("mobility"));
+        energyStorage = check_and_cast<SimpleEpEnergyStorage*>(host->getSubmodule("energyStorage"));
+        energyManagement = check_and_cast<SimpleEpEnergyManagement*>(host->getSubmodule("energyManagement"));
         numNodes = getModuleByPath("simpleNetwork")->par("numHost");
-        chNum = numNodes*0.07;
         antennaAddr = addressType->getUnspecifiedAddress();
-        hop_range = 0;
         qtd_ranges = 3;
         send_prob = 50;
-        respMap = new map<pair<L3Address,int>, pair<L3Address,int>>();
         distMap = new map<L3Address,double>();
-        droneDistMap = new map<L3Address,double>();
-        neighCHDistMap = new map<L3Address,double>();
-        hopMap = new map<L3Address,long>();
         neighbMap = new map<L3Address,int>();
-        centralityMap = new map<L3Address,int>();
-        newConnectedDevs = new map<L3Address,int>();
-        connectedDevs = new map<L3Address,pair<int,bool>>();
-        recFwdMessages = new map<L3Address,std::string>();
-        neighPherom = new map<L3Address,double>();
         sentMessages = new list<std::string>();
         leachNeigh = new std::vector<L3Address>();
 
         routes = new map<pair<L3Address,L3Address>,pair<L3Address,int>>();
         revRoute = new map<pair<L3Address,L3Address>,L3Address>();
 
-        bestHopAddr = new pair<L3Address,int>();
-        scNeighbMap = new map<L3Address,int>();
-        bestLarHopAddr= new pair<L3Address,float>();
-        sprayNWaitNeighb = new vector<L3Address>();
-
         fwdAck = new vector<int>();
         reqAck = new vector<int>();
         hopAck = new vector<int>();
-        chAddr = L3Address("145.236.0.3");//addressType->getUnspecifiedAddress();
         int mlThreshold = getModuleByPath("simpleNetwork")->par("mlThreshold");
 
         vector<float>* a0;
@@ -248,37 +174,12 @@ void WirelessRouting::initialize(int stage)
             }
         }
 
-        for(int i=0;i<3;i++){
-            for(int j=0; j<4; j++){
-                droneQMatrix[i][j]=0;
-            }
-        }
         network=network->createDnn(3, 2, 3, 1);
-        droneNetwork = droneNetwork->createDnn(2,2,3,1);
-//        for(dnn* aux = network; aux->getNeuronConnections()->size()>0;
-//                aux = aux->getNeuronConnections()->operator [](0)){
-//            EV<< "Neuron aux " << aux->getNeuronName() << endl;
-//            EV<< "Connections size: " << aux->getNeuronConnections()->size() << endl;
-//            for(int j = 0; j < aux->getNeuronConnections()->size(); j++){
-//                dnn* neuron = aux->getNeuronConnections()->operator [](j);
-//                EV<< "Neuron " << neuron->getNeuronName() << endl;
-//                EV<< "Connections size: " << neuron->getNeuronConnections()->size() << endl;
-//                for(int k = 0; k < neuron->getNeuronConnections()->size(); k++){
-//                    dnn* neuronProx = neuron->getNeuronConnections()->operator [](k);
-//                    EV<< "Neuron prox " << neuronProx->getNeuronName() << endl;
-//                    EV <<"Weight: " << neuron->getNeuronWeights()->operator [](k) << endl;
-//                }
-//            }
-//        }
-//        EV << "Decision: " << network->calculateDnn(3, 1.2) << endl;
 
-    }
-    else if (stage == INITSTAGE_APPLICATION_LAYER){
-        oracle_ = check_and_cast<Oracle*>(getSimulation()->getModuleByPath("Oracle"));
     }
 }
 
-void WirelessRouting::receiveSignal(cComponent *source, simsignal_t signalID, cObject *obj, cObject *details)
+void SatelliteRouting::receiveSignal(cComponent *source, simsignal_t signalID, cObject *obj, cObject *details)
 {
     EV << "receive signal" << endl;
 //    Enter_Method("receiveChangeNotification");
@@ -307,7 +208,7 @@ void WirelessRouting::receiveSignal(cComponent *source, simsignal_t signalID, cO
 }
 
 
-void WirelessRouting::handleMessageWhenUp(cMessage *msg)
+void SatelliteRouting::handleMessageWhenUp(cMessage *msg)
 {
     if (msg->isSelfMessage()) {
         if (auto waitForRrep = dynamic_cast<WaitForRrep *>(msg))
@@ -316,207 +217,17 @@ void WirelessRouting::handleMessageWhenUp(cMessage *msg)
             sendHelloMessagesIfNeeded();
         else if (msg == expungeTimer)
             expungeRoutes();
-        else if(msg == antennaTimer){
-            EV << "Antenna timer" << endl;
-            auto antennaMsg = createAntennaMsg();
-            sendHeartBeatpkg(antennaMsg,antennaMsg->getDestAddr(),antennaMsg->getHopCount(),0);
-            sentAntennaMsg++;
-            emit(sentAntennaMsgSignal,sentAntennaMsg);
-            scheduleAt(simTime()+5, antennaTimer);
-        }
-        else if(msg == droneTimer){
-            EV << "Drone timer" << endl;
-            auto droneMsg = createDroneMsg();
-            sendHeartBeatpkg(droneMsg,droneMsg->getDestAddr(),droneMsg->getHopCount(),0);
-            sentAntennaMsg++;
-            //emit(sentAntennaMsgSignal,sentAntennaMsg);
-            scheduleAt(simTime()+5, droneTimer);
-        }
+
         else if (msg == counterTimer) {
             scheduleAt(simTime() + 1, counterTimer);
-            this->phero*=0.9;
-            /*if(this->chAddr == getSelfIPAddress() && getDevBatteryPower() < batteryThresh){
-                bool backoffEnabled = getModuleByPath("simpleNetwork")->par("backoffEnabled");
-                std::string netType = getModuleByPath("simpleNetwork")->par("networkType");
-                if(netType == "CAIN"){
-                    if(backoffEnabled){
-                        if(chInfo->isScheduled())
-                            cancelEvent(chInfo);
-                        double backoff = backoffTimer();
-                        scheduleAt(simTime()+backoff, chInfo);
-                    }else
-                        scheduleAt(simTime(), chInfo);
-                }else*/
-            if(chInfo->isScheduled())
-                cancelEvent(chInfo);
-            scheduleAt(simTime()+1, chInfo);
-            //}
-            this->phero = getDevBatteryPower()/neighDistMean;
             timeCounter++;
             if(timeCounter == 5){
                 timeCounter=0;
                 com_range=0;
-                hop_range=0;
             }
             if(lround(simTime().dbl())>=176){
                 //oracle_->shutDownSimulation();
             }
-        }else if(msg == sendFlAvgWeights){
-
-            std::vector<float> *weights = network->getTotalWeights();
-            auto weightMsg = createWeightMsg(weights);
-            sendHeartBeatpkg(weightMsg, addressType->getBroadcastAddress(), 1, 0);
-            if(sendFlAvgWeights->isScheduled())
-                cancelEvent(sendFlAvgWeights);
-            scheduleAt(simTime() + 10, sendFlAvgWeights);
-
-        }else if(msg == sendFlWeights){
-
-            std::vector<float> *weights = network->getTotalWeights();
-            auto weightMsg = createWeightMsg(weights);
-            sendHeartBeatpkg(weightMsg, addressType->getBroadcastAddress(), 1, 0);
-            if(sendFlWeights->isScheduled())
-                cancelEvent(sendFlWeights);
-            if(this->chAddr != getSelfIPAddress()){
-                scheduleAt(simTime() + 5, sendFlWeights);
-            }
-
-        }else if(msg == leachChDecision){
-            chDecision();
-            scheduleAt(simTime()+5, leachChDecision);
-        }else if(msg == chInfo){
-            //if(strcmp(this->getParentModule()->getName(),"host")){//a host
-                auto snoopPkg = createSnoopMsg();
-                sendSnooping(snoopPkg, 1);
-            //}
-        }else if(msg == endTimer){
-            batteryDecay = getDevBatteryPower();
-            emit(batteryDecaySignal,batteryDecay);
-            rreqCount = rerrCount = 0;
-            oracle_->updateCurrChs();
-            if(getDevBatteryPower() <= 0){
-                nodeEnd=lround(simTime().dbl());
-                emit(nodeEndingSignal,nodeEnd);
-                oracle_->shutDownRecNode(getSelfIPAddress());
-                oracle_->checkShutdownNodes();
-            }
-            scheduleAt(simTime() + 0.1, endTimer);
-        }else if(msg == cainAck){
-            return;
-        }/*else if(msg == chElection){
-            nNeigh = 0;
-            chAddr = newChAddr;
-            chBattery = newChBattery;
-            scheduleAt(simTime()+1, chElection);
-            oracle_->setChforDev(getSelfIPAddress(),chAddr, chBattery);
-        }else if (msg == chReset){
-            chAddr = addressType->getUnspecifiedAddress();
-            chBattery = 0;
-            scheduleAt(simTime()+5, chReset);
-        }*/else if(msg == cainTrigger){
-            oracle_->setStartNode(getSelfIPAddress());
-//            if(!this->chAddr == getSelfIPAddress()){
-//                if (simTime() > rebootTime + deletePeriod || rebootTime == 0) {
-                    std::string netType = getModuleByPath("simpleNetwork")->par("networkType");
-                    auto cainMsg = createCainMsg();
-                    if(netType == "EECRM"){
-                        if(!bestHopAddr->first.isUnspecified()){
-                            cainMsg = createCainRREQ();
-                        }
-                    }else if(netType == "SC"){
-                        if(!bestHopAddr->first.isUnspecified()){
-                            cainMsg=createSCMSG();
-                        }
-                    }else if(netType == "LAR"){
-                        if(!bestLarHopAddr->first.isUnspecified()){
-                            cainMsg=createLARMSG();
-                        }
-                    }else if(netType == "SPRAY"){
-                        cainMsg = createSPRAYMSG(numNodes);
-                    }else if(netType == "BRAP"){
-                        cainMsg = createBRAPMSG();
-                    }
-                    ostringstream stream;
-                    if(cainMsg->getPacketType() == CAINFWD || cainMsg->getPacketType() == CAINFWD_IPv6)
-                        stream << "FWD-";
-                    else if(cainMsg->getPacketType() == CAINREQ || cainMsg->getPacketType() == CAINREQ_IPv6)
-                        stream << "REQ-";
-                    stream << cainMsg->getSeqNum();
-                    bool mlEnable = getModuleByPath("simpleNetwork")->par("mlEnable");
-                    if (simTime() > rebootTime + deletePeriod || rebootTime == 0){
-                        if(netType == "SPRAY"){
-                            if(getDevBatteryPower() >= powerThresh){
-                                sendSprayMsg(cainMsg);
-                                sentSprMsg++;
-                                emit(sentSprMsgSignal,sentSprMsg);
-                            }
-                        }else if(netType == "BRAP"){
-                            if(getDevBatteryPower() >= powerThresh){
-                                sendCainMsg(cainMsg, cainMsg->getHopCount(),0);
-                                sentBrapMsg++;
-                                emit(sentBrapMsgSignal,sentBrapMsg);
-                            }
-                        }
-                        if(!cainMsg->getCainDestAddr().isUnspecified()){
-                            if(cainMsg->getPacketType() == CAINREQ || cainMsg->getPacketType() == CAINREQ_IPv6 ||
-                                    cainMsg->getPacketType() == CAINFWD || cainMsg->getPacketType() == CAINFWD_IPv6){
-                                sentCainReqMsg++;
-                                emit(sentCainReqMsgSignal,sentCainReqMsg);
-                                bool mlEnable = getModuleByPath("simpleNetwork")->par("mlEnable");
-                                if(mlEnable && (cainMsg->getPacketType() == CAINREQ ||
-                                                cainMsg->getPacketType() == CAINREQ_IPv6)){
-                                    if(!cainMsg->getCainDestAddr().isBroadcast()){
-                                        calculateDnnDecision(cainMsg->getCainDestAddr());
-                                        bool decision = network->getDecision();
-                                        if(decision){
-                                            double back = 0;
-                                            sendCainMsg(cainMsg,2,back);
-                                        }
-//                                        calculate_coverage_reward(state,decision,cainMsg->getCainDestAddr());
-                                        sendProb=send_prob;
-                                        emit(sendProbSignal, sendProb);
-
-                                    }
-                                }else{
-                                    if(getDevBatteryPower() >= powerThresh){
-                                        double back = 0;
-                                        sendCainMsg(cainMsg,2,back);
-                                    }
-                                }
-                            }else if(cainMsg->getPacketType() == RREQ || cainMsg->getPacketType() == RREQ_IPv6){
-                                if(getDevBatteryPower() >= powerThresh){
-                                    double back = 0;
-                                    sendCainMsg(cainMsg,2,back);
-                                    sentCainRREPMsg++;
-                                    emit(sentCainRREQMsgSignal,sentCainRREPMsg);
-                                }
-                            }else if(cainMsg->getPacketType() == SCMSG || cainMsg->getPacketType() == SCMSG_IPv6){
-                                if(getDevBatteryPower() >= powerThresh){
-                                    double back = 0;
-                                    sendCainMsg(cainMsg,2,back);
-                                    sentCainFwdMsg++;
-                                    emit(sentCainFwdMsgSignal,sentCainFwdMsg);
-                                }
-                            }else if(cainMsg->getPacketType() == LAR || cainMsg->getPacketType() == LAR_IPv6){
-                                if(getDevBatteryPower() >= powerThresh){
-                                    double back = 0;
-                                    sendCainMsg(cainMsg,2,back);
-                                    sentLarMsg++;
-                                    emit(sentLarMsgSignal,sentLarMsg);
-                                }
-
-                            }
-                        }
-                    }
-//                }
-//            }
-            if(getDevBatteryPower() >= powerThresh && !strcmp(this->getParentModule()->getName(),"host"))
-                scheduleAt(simTime()+2, cainTrigger);
-        }else if(msg == cainFwdTimer){
-                handleFwdTimer();
-        }else if(msg == conncetedDevTimer){
-            if(this->chAddr == getSelfIPAddress())
-                updateConnectedDevs();
         }else if (msg == rrepAckTimer)
             handleRREPACKTimer();
         else if (msg == blacklistTimer)
@@ -534,7 +245,7 @@ void WirelessRouting::handleMessageWhenUp(cMessage *msg)
         socket.processMessage(msg);
 }
 
-void WirelessRouting::handleBlackListTimer()
+void SatelliteRouting::handleBlackListTimer()
 {
     simtime_t nextTime = SimTime::getMaxTime();
 
@@ -554,7 +265,7 @@ void WirelessRouting::handleBlackListTimer()
         scheduleAt(nextTime, blacklistTimer);
 }
 
-void WirelessRouting::sendHelloMessagesIfNeeded()
+void SatelliteRouting::sendHelloMessagesIfNeeded()
 {
     ASSERT(useHelloMessages);
     // Every HELLO_INTERVAL milliseconds, the node checks whether it has
@@ -586,7 +297,7 @@ void WirelessRouting::sendHelloMessagesIfNeeded()
     scheduleAt(simTime() + helloInterval - *periodicJitter, helloMsgTimer);
 }
 
-void WirelessRouting::handleRREPACKTimer()
+void SatelliteRouting::handleRREPACKTimer()
 {
     // when a node detects that its transmission of a RREP message has failed,
     // it remembers the next-hop of the failed RREP in a "blacklist" set.
@@ -599,7 +310,7 @@ void WirelessRouting::handleRREPACKTimer()
         scheduleAt(simTime() + blacklistTimeout, blacklistTimer);
 }
 
-const Ptr<SNOOPHB> WirelessRouting::createHelloMessage()
+const Ptr<SNOOPHB> SatelliteRouting::createHelloMessage()
 {
     // called a Hello message, with the RREP
     // message fields set as follows:
@@ -624,7 +335,7 @@ const Ptr<SNOOPHB> WirelessRouting::createHelloMessage()
     return helloMessage;
 }
 
-INetfilter::IHook::Result WirelessRouting::ensureRouteForDatagram(Packet *datagram)
+INetfilter::IHook::Result SatelliteRouting::ensureRouteForDatagram(Packet *datagram)
 {
     const auto& networkHeader = getNetworkProtocolHeader(datagram);
     const L3Address& destAddr = networkHeader->getDestinationAddress();
@@ -678,7 +389,7 @@ INetfilter::IHook::Result WirelessRouting::ensureRouteForDatagram(Packet *datagr
     }
 }
 
-void WirelessRouting::expungeRoutes()
+void SatelliteRouting::expungeRoutes()
 {
     for (int i = 0; i < routingTable->getNumRoutes(); i++) {
         IRoute *route = routingTable->getRoute(i);
@@ -713,7 +424,7 @@ void WirelessRouting::expungeRoutes()
     scheduleExpungeRoutes();
 }
 
-void WirelessRouting::scheduleExpungeRoutes()
+void SatelliteRouting::scheduleExpungeRoutes()
 {
     simtime_t nextExpungeTime = SimTime::getMaxTime();
     for (int i = 0; i < routingTable->getNumRoutes(); i++) {
@@ -743,19 +454,19 @@ void WirelessRouting::scheduleExpungeRoutes()
     }
 }
 
-void WirelessRouting::startRouteDiscovery(const L3Address& target, unsigned timeToLive)
+void SatelliteRouting::startRouteDiscovery(const L3Address& target, unsigned timeToLive)
 {
     EV_INFO << "Starting route discovery with originator " << getSelfIPAddress() << " and destination " << target << endl;
     ASSERT(!hasOngoingRouteDiscovery(target));
 }
 
-void WirelessRouting::sendSnooping(const Ptr<SNOOPHB>& snoop, unsigned int timeToLive){
+void SatelliteRouting::sendSnooping(const Ptr<SNOOPHB>& snoop, unsigned int timeToLive){
     EV << "sending snooping message" << endl;
 //    sendHeartBeatpkg(snoop,addressType->getBroadcastAddress(),timeToLive,*jitterPar);
     sendHeartBeatpkg(snoop,addressType->getBroadcastAddress(),timeToLive,0);
 }
 
-void WirelessRouting::sendResp(const Ptr<RESPHB>& resp, const L3Address& destAddr, unsigned int timeToLive){
+void SatelliteRouting::sendResp(const Ptr<RESPHB>& resp, const L3Address& destAddr, unsigned int timeToLive){
     EV << "sending response message" << endl;
     EV << "Destination: " << resp->getDestAddr() << endl;
     EV << "Source: " << resp->getOriginatorAddr() << endl;
@@ -763,7 +474,7 @@ void WirelessRouting::sendResp(const Ptr<RESPHB>& resp, const L3Address& destAdd
     sendHeartBeatpkg(resp,destAddr,timeToLive,0);
 }
 
-void WirelessRouting::sendCainMsg(const Ptr<CAINMSG>& cainmsg, unsigned int timeToLive, double delay){
+void SatelliteRouting::sendCainMsg(const Ptr<CAINMSG>& cainmsg, unsigned int timeToLive, double delay){
     EV << "sending CAIN ";
     int type = cainmsg->getPacketType();
     switch(type){
@@ -814,51 +525,7 @@ void WirelessRouting::sendCainMsg(const Ptr<CAINMSG>& cainmsg, unsigned int time
         sendHeartBeatpkg(cainmsg,addressType->getBroadcastAddress(),timeToLive,delay);
 }
 
-void WirelessRouting::sendSprayMsg(const Ptr<CAINMSG>& cainMsg){
-
-    int numNeighb = cainMsg->getSprayQtdNeigh();
-    vector<int>* sentNeighbIndex = new vector<int>();
-
-
-    if(numNeighb >= sprayNWaitNeighb->size()){
-
-        for(int i = 0; i < sprayNWaitNeighb->size(); i++){
-
-            int randIndex = rand() % sprayNWaitNeighb->size();
-            vector<int>::iterator it = std::find(sentNeighbIndex->begin(),sentNeighbIndex->end(), randIndex);
-            while(it != sentNeighbIndex->end()){
-                randIndex = rand() % sprayNWaitNeighb->size();
-                it = std::find(sentNeighbIndex->begin(),sentNeighbIndex->end(), randIndex);
-            }
-            sentNeighbIndex->push_back(randIndex);
-            auto cainMsgDup = makeShared<CAINMSG>();
-            cainMsgDup = cainMsg->dup();
-            cainMsgDup->setCainDestAddr(sprayNWaitNeighb->at(randIndex));
-            cainMsgDup->setSenderCoord(baseMobility->getCurrentPosition());
-            sendCainMsg(cainMsgDup, 2,0);
-
-        }
-    }else{
-        for(int i = 0; i < numNeighb; i++){
-
-            int randIndex = rand() % numNeighb;
-            vector<int>::iterator it = std::find(sentNeighbIndex->begin(),sentNeighbIndex->end(), randIndex);
-            while(it != sentNeighbIndex->end()){
-                randIndex = rand() % numNeighb;
-                it = std::find(sentNeighbIndex->begin(),sentNeighbIndex->end(), randIndex);
-            }
-            sentNeighbIndex->push_back(randIndex);
-            auto cainMsgDup = makeShared<CAINMSG>();
-            cainMsgDup = cainMsg->dup();
-            cainMsgDup->setCainDestAddr(sprayNWaitNeighb->at(randIndex));
-            cainMsgDup->setSenderCoord(baseMobility->getCurrentPosition());
-            sendCainMsg(cainMsgDup, 2,0);
-
-        }
-    }
-}
-
-void WirelessRouting::sendHeartBeatpkg(const Ptr<HeartBeat>& hbpacket, const L3Address& destAddr, unsigned int timeToLive, double delay){
+void SatelliteRouting::sendHeartBeatpkg(const Ptr<HeartBeat>& hbpacket, const L3Address& destAddr, unsigned int timeToLive, double delay){
     ASSERT(timeToLive != 0);
     EV << "sending hb message" << endl;
 
@@ -886,7 +553,7 @@ void WirelessRouting::sendHeartBeatpkg(const Ptr<HeartBeat>& hbpacket, const L3A
     }
 }
 
-const Ptr<SNOOPHB> WirelessRouting::createSnoopMsg(){
+const Ptr<SNOOPHB> SatelliteRouting::createSnoopMsg(){
     auto snoopPkg = makeShared<SNOOPHB>();
     Coord coord;
     int batteryPercent = 100;
@@ -905,471 +572,16 @@ const Ptr<SNOOPHB> WirelessRouting::createSnoopMsg(){
     snoopPkg->setMsgCoord(senderCoord);
     snoopPkg->setBatteryPercent(batteryPercent);
     snoopPkg->setTwoHop(false);
-    snoopPkg->setChDist(chDist);
     snoopPkg->setNodeName(this->getParentModule()->getName());
     return snoopPkg;
 }
 
-
-const Ptr<CHDEF> WirelessRouting::createChDefMsg(){
-    auto chDef = makeShared<CHDEF>();
-    int batteryPercent = (int)round(unit(energyStorage->getResidualEnergyCapacity()/energyStorage->getNominalEnergyCapacity()).get() * 100);
-    chDef->setPacketType(usingIpv6 ? LEACH : LEACH_IPv6);
-    chDef->setChunkLength(usingIpv6 ? B(48) : B(24));
-    chDef->setSourceAddr(getSelfIPAddress());
-    chDef->setSenderCoord(baseMobility->getCurrentPosition());
-    return chDef;
-}
-
-const Ptr<CAINMSG> WirelessRouting::createCainMsg(){
-    auto cainMsg = makeShared<CAINMSG>();
-    EV << "Node " << getSelfIPAddress() << " is creating a ";
-    if(chAddr == L3Address("0.0.0.0")){
-        cainMsg->setPacketType(usingIpv6 ? CAINREQ_IPv6 : CAINREQ);
-        cainMsg->setDestAddr(addressType->getBroadcastAddress());
-        /*defining the hop destination*/
-        int distMapsize = distMap->size();
-        int hopMapsize = hopMap->size();
-        if(getModuleByPath("simpleNetwork")->par("mlEnable")){
-            if (distMapsize > 0 || hopMapsize > 0){
-                L3Address cain_dest = findHopRL();
-                cainMsg->setCainDestAddr(cain_dest);
-                this->distMapSize = distMapsize;
-                emit(distMapSizeSignal,this->distMapSize);
-            }else
-                cainMsg->setCainDestAddr(addressType->getBroadcastAddress());
-        }else{
-            int chBatt = 0;
-            L3Address neighbAddr = addressType->getUnspecifiedAddress();
-            std::map<L3Address,int>::iterator it = neighbMap->begin();
-            for(;it != neighbMap->end(); it++){
-                if(it->second > chBatt){
-                    chBatt = it->second;
-                    neighbAddr = it->first;
-                }
-            }
-            respMapSize = neighbMap->size();
-            emit(respMapSizeSignal,this->respMapSize);
-            cainMsg->setCainDestAddr(neighbAddr);
-        }
-        cainMsg->setSeqNum(++reqSeqNum);
-        std::string msgId = "hop"+to_string(reqSeqNum);
-        cainMsg->setMsgId(msgId.c_str());
-        sentMessages->push_back(msgId);
-        reqAck->push_back(reqSeqNum);
-        cainMsg->setHopCount(2);
-        EV << (usingIpv6 ? "CAINREQ_IPv6" : "CAINREQ") << " message" << endl;
-    }else{
-        cainMsg->setPacketType(usingIpv6 ? CAINFWD_IPv6 : CAINFWD);
-        if(!droneAddr.isUnspecified()){
-            cainMsg->setDestAddr(droneAddr);
-            cainMsg->setCainDestAddr(droneAddr);
-        }else{
-            cainMsg->setDestAddr(chAddr);
-            cainMsg->setCainDestAddr(chAddr);
-//            cainMsg->setDestAddr(addressType->getBroadcastAddress());
-//            cainMsg->setCainDestAddr(addressType->getBroadcastAddress());
-        }
-        cainMsg->setSeqNum(++fwdSeqNum);
-        fwdAck->push_back(fwdSeqNum);
-        cainMsg->setHopCount(1);
-        cainMsg->setDistance(0);
-        EV << (usingIpv6 ? "CAINFWD_IPv6" : "CAINFWD") << " message" << endl;
-    }
-    cainMsg->setHops(0);
-    cainMsg->setChunkLength(usingIpv6 ? B(48) : B(24));
-    cainMsg->setOriginatorAddr(getSelfIPAddress());
-    cainMsg->setSourceAddr(getSelfIPAddress());
-    cainMsg->setTimeInit(simTime());
-    cainMsg->setSenderCoord(baseMobility->getCurrentPosition());
-    cainMsg->setPheromone(this->phero);
-    return cainMsg;
-}
-
-const Ptr<CAINMSG> WirelessRouting::createCainRespMsg(L3Address dest, L3Address originator){
-    auto cainMsg = makeShared<CAINMSG>();
-    cainMsg->setPacketType(usingIpv6 ? CAINRESP_IPv6 : CAINRESP);
-    cainMsg->setChunkLength(usingIpv6 ? B(48) : B(24));
-    cainMsg->setDestAddr(dest);
-    cainMsg->setCainDestAddr(dest);
-    cainMsg->setHopCount(1);
-    cainMsg->setOriginatorAddr(originator);
-    cainMsg->setSourceAddr(getSelfIPAddress());
-    cainMsg->setChAddr(chAddr);
-    cainMsg->setChBattery(chBattery);
-    cainMsg->setBatteryPercent(getDevBatteryPower());
-    cainMsg->setCentrality(respMap->size());
-    return cainMsg;
-}
-
-const Ptr<CAINMSG> WirelessRouting::createCainFwdMsg(L3Address dest){
-    auto cainMsg = makeShared<CAINMSG>();
-    cainMsg->setHops(0);
-    cainMsg->setPacketType(usingIpv6 ? CAINFWD_IPv6 : CAINFWD);
-    cainMsg->setChunkLength(usingIpv6 ? B(48) : B(24));
-    cainMsg->setSeqNum(++fwdSeqNum);
-    /*if(!droneAddr.isUnspecified()){
-        cainMsg->setDestAddr(droneAddr);
-        cainMsg->setCainDestAddr(droneAddr);
-    }else{*/
-        cainMsg->setDestAddr(dest);
-        cainMsg->setCainDestAddr(dest);
-    //}
-    cainMsg->setHopCount(1);
-    cainMsg->setOriginatorAddr(getSelfIPAddress());
-    cainMsg->setSourceAddr(getSelfIPAddress());
-    cainMsg->setSenderCoord(baseMobility->getCurrentPosition());
-    return cainMsg;
-}
-
-const Ptr<CAINMSG> WirelessRouting::createCainReqMsg(L3Address dest){
-    auto cainMsg = makeShared<CAINMSG>();
-    cainMsg->setHops(0);
-    cainMsg->setPacketType(usingIpv6 ? CAINREQ_IPv6 : CAINREQ);
-    cainMsg->setChunkLength(usingIpv6 ? B(48) : B(24));
-    cainMsg->setSeqNum(++reqSeqNum);
-    cainMsg->setDestAddr(dest);
-    cainMsg->setCainDestAddr(dest);
-    cainMsg->setHopCount(2);
-    cainMsg->setOriginatorAddr(getSelfIPAddress());
-    cainMsg->setSourceAddr(getSelfIPAddress());
-    cainMsg->setSenderCoord(baseMobility->getCurrentPosition());
-    return cainMsg;
-}
-
-const Ptr<CAINMSG> WirelessRouting::createCainHopMsg(L3Address dest){
-    auto cainMsg = makeShared<CAINMSG>();
-    cainMsg->setHops(0);
-    cainMsg->setPacketType(usingIpv6 ? CAINHOP_IPv6: CAINHOP);
-    cainMsg->setChunkLength(usingIpv6 ? B(48) : B(24));
-    cainMsg->setSeqNum(++hopSeqNum);
-    std::string msgId = "hop"+to_string(hopSeqNum);
-    cainMsg->setMsgId(msgId.c_str());
-    sentMessages->push_back(msgId);
-    cainMsg->setDestAddr(dest);
-    cainMsg->setCainDestAddr(dest);
-    cainMsg->setHopCount(3);
-    cainMsg->setOriginatorAddr(getSelfIPAddress());
-    cainMsg->setSourceAddr(getSelfIPAddress());
-    cainMsg->setSenderCoord(baseMobility->getCurrentPosition());
-    return cainMsg;
-}
-
-
-const Ptr<DRONEMSG> WirelessRouting::createDroneMsg(){
-    auto droneMsg = makeShared<DRONEMSG>();
-    droneMsg->setPacketType(usingIpv6 ? DRONE_IPv6: DRONE);
-    droneMsg->setChunkLength(usingIpv6 ? B(48) : B(24));
-    droneMsg->setDestAddr(addressType->getBroadcastAddress());
-    droneMsg->setSourceAddr(getSelfIPAddress());
-    droneMsg->setSenderCoord(baseMobility->getCurrentPosition());
-    droneMsg->setHopCount(1);
-    return droneMsg;
-}
-
-
-const Ptr<ANTENNA> WirelessRouting::createAntennaMsg(){
-    auto antennaMsg = makeShared<ANTENNA>();
-    antennaMsg->setPacketType(usingIpv6 ? ANTN_IPv6: ANTN);
-    antennaMsg->setChunkLength(usingIpv6 ? B(48) : B(24));
-    antennaMsg->setDestAddr(addressType->getBroadcastAddress());
-    antennaMsg->setSourceAddr(getSelfIPAddress());
-    antennaMsg->setHopCount(1);
-    return antennaMsg;
-}
-
-const Ptr<FLWEIGHT> WirelessRouting::createWeightMsg(std::vector<float> *weights){
-    auto weightMsg = makeShared<FLWEIGHT>();
-    weightMsg->setPacketType(usingIpv6 ? WGHT_IPv6 : WGHT);
-    weightMsg->setDestAddr(addressType->getBroadcastAddress());
-    weightMsg->setChunkLength(usingIpv6 ? B(48) : B(24));
-    weightMsg->setSourceAddr(getSelfIPAddress());
-    weightMsg->setW11(weights->operator [](0));
-    weightMsg->setW12(weights->operator [](1));
-    weightMsg->setW13(weights->operator [](2));
-    weightMsg->setW21(weights->operator [](3));
-    weightMsg->setW22(weights->operator [](4));
-    weightMsg->setW23(weights->operator [](5));
-    weightMsg->setW31(weights->operator [](6));
-    weightMsg->setW32(weights->operator [](7));
-    weightMsg->setW33(weights->operator [](8));
-    weightMsg->setWo1(weights->operator [](9));
-    weightMsg->setWo2(weights->operator [](10));
-    weightMsg->setWo3(weights->operator [](11));
-
-    return weightMsg;
-
-}
-
-const Ptr<CAINMSG> WirelessRouting::createCainErrMsg(L3Address dest, L3Address originator){
-    auto cainMsg = makeShared<CAINMSG>();
-    cainMsg->setPacketType(usingIpv6 ? CAINERR_IPv6: CAINERR);
-    cainMsg->setChunkLength(usingIpv6 ? B(48) : B(24));
-    cainMsg->setDestAddr(dest);
-    cainMsg->setCainDestAddr(dest);
-    cainMsg->setHopCount(3);
-    cainMsg->setOriginatorAddr(originator);
-    cainMsg->setSourceAddr(getSelfIPAddress());
-    return cainMsg;
-}
-
-
-const Ptr<CAINMSG> WirelessRouting::createCainAck(L3Address dest,heartBeatType cainMsgType,int seqNum){
-    auto cainMsg = makeShared<CAINMSG>();
-    cainMsg->setPacketType(usingIpv6 ? CAINACK_IPv6: CAINACK);
-    cainMsg->setChunkLength(usingIpv6 ? B(48) : B(24));
-    cainMsg->setDestAddr(dest);
-    cainMsg->setCainDestAddr(dest);
-    cainMsg->setHopCount(1);
-    cainMsg->setOriginatorAddr(getSelfIPAddress());
-    cainMsg->setSourceAddr(getSelfIPAddress());
-    cainMsg->setAckType(cainMsgType);
-    cainMsg->setAckSeqNum(seqNum);
-    return cainMsg;
-}
-
-const Ptr<CAINMSG> WirelessRouting::createAckTimer(heartBeatType cainMsgType,int seqNum){
-    auto cainMsg = makeShared<CAINMSG>();
-    cainMsg->setPacketType(usingIpv6 ? CAINACK_IPv6: CAINACK);
-    cainMsg->setChunkLength(usingIpv6 ? B(48) : B(24));
-    cainMsg->setDestAddr(getSelfIPAddress());
-    cainMsg->setCainDestAddr(getSelfIPAddress());
-    cainMsg->setAckType(cainMsgType);
-    cainMsg->setAckSeqNum(seqNum);
-    cainMsg->setHopCount(1);
-    cainMsg->setOriginatorAddr(getSelfIPAddress());
-    cainMsg->setSourceAddr(getSelfIPAddress());
-    return cainMsg;
-}
-
-const Ptr<RESPHB> WirelessRouting::createRespHBMsg(L3Address dest){
-    auto resp = makeShared<RESPHB>();
-    int batteryPercent = (int)round(unit(energyStorage->getResidualEnergyCapacity()/energyStorage->getNominalEnergyCapacity()).get() * 100);
-    resp->setPacketType(usingIpv6 ? RESP_IPv6 :RESP);
-    resp->setChunkLength(usingIpv6 ? B(48) : B(24));
-    resp->setDestAddr(dest);
-    resp->setHopCount(2);
-    resp->setOriginatorAddr(getSelfIPAddress());
-    resp->setSourceAddr(getSelfIPAddress());
-    resp->setChAddr(chAddr);
-    resp->setBatteryPercent(batteryPercent);
-    resp->setSenderCoord(baseMobility->getCurrentPosition());
-    return resp;
-}
-
-const Ptr<CAINMSG> WirelessRouting::createCainRREQ(){
-    auto cainMsg = makeShared<CAINMSG>();
-    EV << "Node " << getSelfIPAddress() << " is creating a ";
-    cainMsg->setPacketType(usingIpv6 ? RREQ_IPv6 : RREQ);
-    cainMsg->setDestAddr(addressType->getBroadcastAddress());
-    cainMsg->setCainDestAddr(addressType->getBroadcastAddress());
-    cainMsg->setSeqNum(++reqSeqNum);
-    reqAck->push_back(reqSeqNum);
-    EV << (usingIpv6 ? "RREQ_IPv6" : "RREQ") << " message" << endl;
-    cainMsg->setChunkLength(usingIpv6 ? B(48) : B(24));
-    cainMsg->setHopCount(10);
-    cainMsg->setOriginatorAddr(getSelfIPAddress());
-    cainMsg->setSourceAddr(getSelfIPAddress());
-//    L3Address cainDest = oracle_->getCainDestination(getSelfIPAddress(), numNodes);
-    cainMsg->setCainDestAddr(bestHopAddr->first);
-    cainMsg->setSenderCoord(baseMobility->getCurrentPosition());
-    return cainMsg;
-}
-
-const Ptr<CAINMSG> WirelessRouting::createSCMSG(){
-    auto cainMsg = makeShared<CAINMSG>();
-    cainMsg->setHops(0);
-    EV << "Node " << getSelfIPAddress() << " is creating a ";
-    cainMsg->setPacketType(usingIpv6 ? SCMSG_IPv6 : SCMSG);
-    cainMsg->setDestAddr(addressType->getBroadcastAddress());
-    EV << (usingIpv6 ? "SCMSG_IPv6" : "SCMSG") << " message" << endl;
-    cainMsg->setChunkLength(usingIpv6 ? B(48) : B(24));
-    cainMsg->setHopCount(10);
-    cainMsg->setSeqNum(++scSeqNum);
-    std::string msgId = "sc"+to_string(scSeqNum);
-    cainMsg->setMsgId(msgId.c_str());
-    cainMsg->setOriginatorAddr(getSelfIPAddress());
-    cainMsg->setSourceAddr(getSelfIPAddress());
-    cainMsg->setCainDestAddr(bestHopAddr->first);
-    cainMsg->setSenderCoord(baseMobility->getCurrentPosition());
-    cainMsg->setTimeInit(simTime());
-    return cainMsg;
-}
-
-const Ptr<CAINMSG> WirelessRouting::createCainRREP(L3Address nextHop,L3Address rreqDest,L3Address cainSource
-        ,int battery){
-    sentCainRREPMsg++;
-    emit(sentCainRREPMsgSignal,sentCainRREPMsg);
-    auto cainMsg = makeShared<CAINMSG>();
-    EV << "Node " << getSelfIPAddress() << " is creating a ";
-    cainMsg->setPacketType(usingIpv6 ? RREP_IPv6 : RREP);
-    cainMsg->setDestAddr(nextHop);
-    cainMsg->setCainDestAddr(nextHop);
-    cainMsg->setSeqNum(++repSeqNum);
-    reqAck->push_back(repSeqNum);
-    EV << (usingIpv6 ? "RREP_IPv6" : "RREP") << " message" << endl;
-    cainMsg->setChunkLength(usingIpv6 ? B(48) : B(24));
-    cainMsg->setHopCount(10);
-    cainMsg->setOriginatorAddr(getSelfIPAddress());
-    cainMsg->setBatteryPercent(battery);
-    cainMsg->setSourceAddr(getSelfIPAddress());
-    L3Address cainDest = oracle_->getCainDestination(getSelfIPAddress(), numNodes);
-    cainMsg->setCainDestAddr(rreqDest);
-    cainMsg->setRrepSource(cainSource);
-    cainMsg->setSenderCoord(baseMobility->getCurrentPosition());
-    return cainMsg;
-}
-
-const Ptr<CAINMSG> WirelessRouting::createLARMSG(){
-    auto cainMsg = makeShared<CAINMSG>();
-    cainMsg->setHops(0);
-    EV << "Node " << getSelfIPAddress() << " is creating a ";
-    cainMsg->setPacketType(usingIpv6 ? LAR_IPv6 : LAR);
-    cainMsg->setDestAddr(addressType->getBroadcastAddress());
-    cainMsg->setCainDestAddr(addressType->getBroadcastAddress());
-    cainMsg->setSeqNum(++reqSeqNum);
-    std::string msgId = "lar"+to_string(scSeqNum);
-    cainMsg->setMsgId(msgId.c_str());
-    reqAck->push_back(reqSeqNum);
-    EV << (usingIpv6 ? "LAR_IPv6" : "LAR") << " message" << endl;
-    cainMsg->setChunkLength(usingIpv6 ? B(48) : B(24));
-    cainMsg->setHopCount(5);
-    cainMsg->setOriginatorAddr(getSelfIPAddress());
-    cainMsg->setSourceAddr(getSelfIPAddress());
-//    L3Address cainDest = oracle_->getCainDestination(getSelfIPAddress(), numNodes);
-    cainMsg->setCainDestAddr(bestLarHopAddr->first);
-    cainMsg->setSenderCoord(baseMobility->getCurrentPosition());
-    cainMsg->setTimeInit(simTime());
-    return cainMsg;
-}
-
-const Ptr<CAINMSG> WirelessRouting::createSPRAYMSG(int numNodes){
-    auto cainMsg = makeShared<CAINMSG>();
-    cainMsg->setHops(0);
-    EV << "Node " << getSelfIPAddress() << " is creating a ";
-    cainMsg->setPacketType(usingIpv6 ? SPR_IPv6 : SPR);
-    cainMsg->setDestAddr(addressType->getBroadcastAddress());
-    cainMsg->setCainDestAddr(addressType->getBroadcastAddress());
-    cainMsg->setSeqNum(++reqSeqNum);
-    reqAck->push_back(reqSeqNum);
-    std::string msgId = "spr"+to_string(scSeqNum);
-    cainMsg->setMsgId(msgId.c_str());
-    EV << (usingIpv6 ? "SPR_IPv6" : "SPR") << " message" << endl;
-    cainMsg->setChunkLength(usingIpv6 ? B(48) : B(24));
-    cainMsg->setHopCount(10);
-    int fract = getModuleByPath("simpleNetwork")->par("sprayFraction");
-    int neighb = numNodes/fract;
-    cainMsg->setSprayQtdNeigh(neighb);
-    cainMsg->setOriginatorAddr(getSelfIPAddress());
-    cainMsg->setSourceAddr(getSelfIPAddress());
-    cainMsg->setSenderCoord(baseMobility->getCurrentPosition());
-    cainMsg->setTimeInit(simTime());
-    return cainMsg;
-}
-
-const Ptr<CAINMSG> WirelessRouting::createBRAPMSG(){
-    auto cainMsg = makeShared<CAINMSG>();
-    cainMsg->setHops(0);
-    EV << "Node " << getSelfIPAddress() << " is creating a ";
-    cainMsg->setPacketType(usingIpv6 ? BRAP_IPv6 : BRAP);
-    cainMsg->setDestAddr(addressType->getBroadcastAddress());
-    cainMsg->setCainDestAddr(addressType->getBroadcastAddress());
-    cainMsg->setSeqNum(++reqSeqNum);
-    reqAck->push_back(reqSeqNum);
-    EV << (usingIpv6 ? "BRAP_IPv6" : "BRAP") << " message" << endl;
-    cainMsg->setChunkLength(usingIpv6 ? B(48) : B(24));
-    cainMsg->setHopCount(10);
-    cainMsg->setOriginatorAddr(getSelfIPAddress());
-    cainMsg->setSourceAddr(getSelfIPAddress());
-    cainMsg->setSenderCoord(baseMobility->getCurrentPosition());
-    cainMsg->setChAddr(chAddr);
-    cainMsg->setCentrality(respMap->size());
-    return cainMsg;
-}
-
-L3Address WirelessRouting::findHopRL(){
-    if(rl_type == "Euclidean1" || rl_type == "Euclidean2"  ||
-            rl_type == "Euclidean3"){
-        map<L3Address,double>::iterator it = distMap->begin();
-        L3Address dest_addr;
-        long dist;
-        if(rl_type == "Euclidean1"){
-            dist = 0;
-            for(;it != distMap->end(); it++){
-                long chDist = neighCHDistMap->operator [](it->first);
-                long avgDist = alpha*it->second+(1-alpha)*chDist;
-                if(avgDist > dist){
-                //if(it->second > dist){
-                    dest_addr = it->first;
-                    dist = avgDist;
-                    //dist = it->second;
-                }
-            }
-        }else if(rl_type == "Euclidean2"){
-            dist = 10000;
-            for(;it != distMap->end(); it++){
-                if(it->second < dist){
-                    dest_addr = it->first;
-                    dist = it->second;
-                }
-            }
-        }else if(rl_type == "Euclidean3"){
-            int med_dist = com_range/2;
-            int range = med_dist;
-            for(;it != distMap->end(); it++){
-                if(std::abs(med_dist-it->second) < range){
-                    dest_addr = it->first;
-                    range = it->second;
-                }
-            }
-        }
-        if(dest_addr.isUnspecified())
-            dest_addr = addressType->getBroadcastAddress();
-        return dest_addr;
-    } else if(rl_type == "Hop1" || rl_type == "Hop2"  ||
-                rl_type == "Hop3"){
-        map<L3Address,long>::iterator it = hopMap->begin();
-        L3Address dest_addr;
-        int num_hop;
-        if(rl_type == "Hop1"){
-            num_hop = -10000;
-            for(;it != hopMap->end(); it++){
-                if(it->second > num_hop){
-                    dest_addr = it->first;
-                    num_hop = it->second;
-                }
-            }
-        }else if(rl_type == "Hop2"){
-            num_hop = 10000;
-            for(;it != hopMap->end(); it++){
-                if(it->second < num_hop){
-                    dest_addr = it->first;
-                    num_hop = it->second;
-                }
-            }
-        }else if(rl_type == "Hop3"){
-            int med_hop = hop_range/2;
-            int range = med_hop;
-            for(;it != hopMap->end(); it++){
-                if(std::abs(med_hop-it->second) < range){
-                    dest_addr = it->first;
-                    range = it->second;
-                }
-            }
-        }
-        if(dest_addr.isUnspecified())
-            dest_addr = addressType->getBroadcastAddress();
-        return dest_addr;
-    }
-    return L3Address("0.0.0.0");
-}
-
-bool WirelessRouting::hasOngoingRouteDiscovery(const L3Address& target)
+bool SatelliteRouting::hasOngoingRouteDiscovery(const L3Address& target)
 {
     return waitForRREPTimers.find(target) != waitForRREPTimers.end();
 }
 
-INetfilter::IHook::Result WirelessRouting::datagramForwardHook(Packet *datagram)
+INetfilter::IHook::Result SatelliteRouting::datagramForwardHook(Packet *datagram)
 {
     // TODO: Implement: Actions After Reboot
     // If the node receives a data packet for some other destination, it SHOULD
@@ -1443,7 +655,7 @@ INetfilter::IHook::Result WirelessRouting::datagramForwardHook(Packet *datagram)
     return ACCEPT;
 }
 
-void WirelessRouting::sendRERRWhenNoRouteToForward(const L3Address& unreachableAddr)
+void SatelliteRouting::sendRERRWhenNoRouteToForward(const L3Address& unreachableAddr)
 {
     if (rerrCount >= rerrRatelimit) {
         EV_WARN << "A node should not generate more than RERR_RATELIMIT RERR messages per second. Canceling sending RERR" << endl;
@@ -1470,7 +682,7 @@ void WirelessRouting::sendRERRWhenNoRouteToForward(const L3Address& unreachableA
     sendHeartBeatpkg(rerr, addressType->getBroadcastAddress(), 1,0);
 }
 
-void WirelessRouting::handleLinkBreakSendRERR(const L3Address& unreachableAddr)
+void SatelliteRouting::handleLinkBreakSendRERR(const L3Address& unreachableAddr)
 {
     // For case (i), the node first makes a list of unreachable destinations
     // consisting of the unreachable neighbor and any additional
@@ -1558,7 +770,7 @@ void WirelessRouting::handleLinkBreakSendRERR(const L3Address& unreachableAddr)
     sendHeartBeatpkg(rerr, addressType->getBroadcastAddress(), 1, 0);
 }
 
-const Ptr<Rerr> WirelessRouting::createRERR(const std::vector<UnreachableNode>& unreachableNodes)
+const Ptr<Rerr> SatelliteRouting::createRERR(const std::vector<UnreachableNode>& unreachableNodes)
 {
     auto rerr = makeShared<Rerr>(); // TODO: "AODV-RERR");
     rerr->setPacketType(usingIpv6 ? def : def);
@@ -1578,7 +790,7 @@ const Ptr<Rerr> WirelessRouting::createRERR(const std::vector<UnreachableNode>& 
     return rerr;
 }
 
-bool WirelessRouting::updateValidRouteLifeTime(const L3Address& destAddr, simtime_t lifetime)
+bool SatelliteRouting::updateValidRouteLifeTime(const L3Address& destAddr, simtime_t lifetime)
 {
     IRoute *route = routingTable->findBestMatchingRoute(destAddr);
     if (route && route->getSource() == this) {
@@ -1593,7 +805,7 @@ bool WirelessRouting::updateValidRouteLifeTime(const L3Address& destAddr, simtim
     return false;
 }
 
-void WirelessRouting::processPacket(Packet *packet)
+void SatelliteRouting::processPacket(Packet *packet)
 {
     L3Address sourceAddr = packet->getTag<L3AddressInd>()->getSrcAddress();
     // KLUDGE: I added this -1 after TTL decrement has been moved in Ipv4
@@ -1610,105 +822,10 @@ void WirelessRouting::processPacket(Packet *packet)
             handleSnooping(CHK(dynamicPtrCast<SNOOPHB>(hbPacket->dupShared())), sourceAddr);
             delete packet;
             return;
-        case LEACH:
-        case LEACH_IPv6:
-            EV << "Leach message arrived" << endl;
-            handleLeachMsg(CHK(dynamicPtrCast<CHDEF>(hbPacket->dupShared())));
-            delete packet;
-            return;
-
-        case RESP:
-        case RESP_IPv6:
-            EV << "Resp message arrived" << endl;
-            handleResp(CHK(dynamicPtrCast<RESPHB>(hbPacket->dupShared())));
-            delete packet;
-            return;
-        case CAINREQ:
-        case CAINREQ_IPv6:
-            EV << "CAIN REQ message arrived" << endl;
-            handleCainREQ(CHK(dynamicPtrCast<CAINMSG>(hbPacket->dupShared())));
-            delete packet;
-            return;
-        case CAINRESP:
-        case CAINRESP_IPv6:
-            EV << "CAIN RESP message arrived" << endl;
-            handleCainRESP(CHK(dynamicPtrCast<CAINMSG>(hbPacket->dupShared())));
-            delete packet;
-            return;
         case CAINFWD:
         case CAINFWD_IPv6:
             EV << "CAIN FWD message arrived" << endl;
             handleCainFWD(CHK(dynamicPtrCast<CAINMSG>(hbPacket->dupShared())));
-            delete packet;
-            return;
-        case CAINHOP:
-        case CAINHOP_IPv6:
-            EV << "CAIN HOP message arrived" << endl;
-            handleCainHOP(CHK(dynamicPtrCast<CAINMSG>(hbPacket->dupShared())));
-            delete packet;
-            return;
-        case CAINERR:
-        case CAINERR_IPv6:
-            EV << "CAIN ERR message arrived" << endl;
-            handleCainERR(CHK(dynamicPtrCast<CAINMSG>(hbPacket->dupShared())));
-            delete packet;
-            return;
-        case CAINACK:
-        case CAINACK_IPv6:
-            EV << "CAIN ACK message arrived" << endl;
-            handleCainACK(CHK(dynamicPtrCast<CAINMSG>(hbPacket->dupShared())));
-            delete packet;
-            return;
-        case RREQ:
-        case RREQ_IPv6:
-            EV << "CAIN RREQ message arrived" << endl;
-            recCainRREQMsg++;
-            emit(recCainRREQMsgSignal,recCainRREQMsg);
-            handleCainRREQ(CHK(dynamicPtrCast<CAINMSG>(hbPacket->dupShared())));
-            delete packet;
-            return;
-        case RREP:
-        case RREP_IPv6:
-            EV << "CAIN RREP message arrived" << endl;
-            recCainRREPMsg++;
-            emit(recCainRREPMsgSignal,recCainRREPMsg);
-            handleCainRREP(CHK(dynamicPtrCast<CAINMSG>(hbPacket->dupShared())));
-            delete packet;
-            return;
-        case SCMSG:
-        case SCMSG_IPv6:
-            EV << "SC message arrived" << endl;
-            handleSCMSG(CHK(dynamicPtrCast<CAINMSG>(hbPacket->dupShared())));
-            delete packet;
-            return;
-        case LAR:
-        case LAR_IPv6:
-            EV << "CAIN LAR message arrived" << endl;
-            handleCainLAR(CHK(dynamicPtrCast<CAINMSG>(hbPacket->dupShared())));
-            delete packet;
-            return;
-        case SPR:
-        case SPR_IPv6:
-            EV << "CAIN SPRAY message arrived" << endl;
-            handleCainSPR(CHK(dynamicPtrCast<CAINMSG>(hbPacket->dupShared())));
-            delete packet;
-            return;
-        case BRAP:
-        case BRAP_IPv6:
-            EV << "CAIN BRAP message arrived" << endl;
-            handleCainBRAP(CHK(dynamicPtrCast<CAINMSG>(hbPacket->dupShared())));
-            delete packet;
-            return;
-        case CAINREPLY:
-        case CAINREPLY_IPv6:
-            EV << "CAIN REPLY message arrived" << endl;
-            handleCainReply(CHK(dynamicPtrCast<CAINMSG>(hbPacket->dupShared())));
-            delete packet;
-            return;
-        case HOPCOUNT:
-        case HOPCOUNT_IPv6:
-            EV << "CAIN HOP COUNT message arrived" << endl;
-            handleCainHopCount(CHK(dynamicPtrCast<CAINMSG>(hbPacket->dupShared())));
             delete packet;
             return;
         case ANTN:
@@ -1723,31 +840,25 @@ void WirelessRouting::processPacket(Packet *packet)
             handleDroneMsg(CHK(dynamicPtrCast<DRONEMSG>(hbPacket->dupShared())));
             delete packet;
             return;
-        case WGHT:
-        case WGHT_IPv6:
-            EV << "Weight message arriving" << endl;
-            handleWeightMsg(CHK(dynamicPtrCast<FLWEIGHT>(hbPacket->dupShared())));
-            delete packet;
-            return;
         default:
             delete packet;
             return;
     }
 }
 
-void WirelessRouting::socketErrorArrived(UdpSocket *socket, Indication *indication)
+void SatelliteRouting::socketErrorArrived(UdpSocket *socket, Indication *indication)
 {
     EV_WARN << "Ignoring UDP error report " << indication->getName() << endl;
     delete indication;
 }
 
-void WirelessRouting::socketClosed(UdpSocket *socket)
+void SatelliteRouting::socketClosed(UdpSocket *socket)
 {
     if (operationalState == State::STOPPING_OPERATION)
         startActiveOperationExtraTimeOrFinish(par("stopOperationExtraTime"));
 }
 
-void WirelessRouting::handleStartOperation(LifecycleOperation *operation)
+void SatelliteRouting::handleStartOperation(LifecycleOperation *operation)
 {
 
 
@@ -1757,132 +868,22 @@ void WirelessRouting::handleStartOperation(LifecycleOperation *operation)
     socket.setBroadcast(true);
 
 
-    if(strcmp(this->getParentModule()->getName(),"antenna")==0){
-        EV << "antenna handle start operation" << endl;
-        scheduleAt(simTime(), antennaTimer);
-    }else if(strcmp(this->getParentModule()->getName(),"drone")==0){
-        EV << "drone handle start operation" << endl;
-        scheduleAt(simTime(), droneTimer);
-    }else{
-        rebootTime = simTime();
+
+    rebootTime = simTime();
 
 
-        // RFC 5148:
-        // Jitter SHOULD be applied by reducing this delay by a random amount, so that
-        // the delay between consecutive transmissions of messages of the same type is
-        // equal to (MESSAGE_INTERVAL - jitter), where jitter is the random value.
-        if (useHelloMessages)
-            scheduleAt(simTime() + helloInterval - *periodicJitter, helloMsgTimer);
-        scheduleAt(simTime() + 2, counterTimer);
-        scheduleAt(simTime(), chInfo);
-    //    scheduleAt(simTime()+0.4, conncetedDevTimer);
-//        scheduleAt(simTime()+0.5, chElection);
-//        scheduleAt(simTime()+0.5, chReset);
-        if(!strcmp(this->getParentModule()->getName(),"host"))
-                scheduleAt(simTime()+2, cainTrigger);
-        scheduleAt(simTime()+ 1, endTimer);
-        //scheduleAt(simTime()+3.1, sendFlWeights);
-//        scheduleAt(simTime()+3, sendFlAvgWeights);
-        scheduleAt(simTime()+1, leachChDecision);
+    // RFC 5148:
+    // Jitter SHOULD be applied by reducing this delay by a random amount, so that
+    // the delay between consecutive transmissions of messages of the same type is
+    // equal to (MESSAGE_INTERVAL - jitter), where jitter is the random value.
+    if (useHelloMessages)
+        scheduleAt(simTime() + helloInterval - *periodicJitter, helloMsgTimer);
+    scheduleAt(simTime() + 2, counterTimer);
 
-    //    scheduleAt(simTime()+0.7, cainFwdTimer);
-    }
+//    scheduleAt(simTime()+0.7, cainFwdTimer);handleCainFWD
 }
 
-void WirelessRouting::handleSnooping(const Ptr<SNOOPHB>& snoop, const L3Address& sourceAddr){
-    EV_INFO << "AODV Route Request arrived with source addr: " << sourceAddr << " originator addr: "
-            << snoop->getOriginatorAddr() << " destination addr: " << snoop->getDestAddr() << endl;
-    EV << "Sel Ip: " << getSelfIPAddress() << endl;
-    IRoute *previousHopRoute = routingTable->findBestMatchingRoute(sourceAddr);
-
-    if(!strcmp(this->getParentModule()->getName(),"drone") &&
-            !strcmp(snoop->getNodeName(),"satellite")){
-        EV << "Drone receiving a satellite snoop" << endl;
-        satelliteAddr = snoop->getOriginatorAddr();
-    }
-
-    Coord thisCoord = Coord(baseMobility->getCurrentPosition());
-    Coord senderCoord = snoop->getMsgCoord();
-    double dist = thisCoord.distance(senderCoord);
-    distMap->operator [](sourceAddr) = dist;
-    if(snoop->getChDist() != 0){
-        neighCHDistMap->operator [](sourceAddr) = snoop->getChDist();
-    }
-    if(dist > com_range)
-        com_range = dist;
-
-    neighbMap->operator [](sourceAddr) = snoop->getBatteryPercent();
-    //sprayNwait
-    if (!previousHopRoute || previousHopRoute->getSource() != this) {
-        // create without valid sequence number
-        previousHopRoute = createRoute(sourceAddr, sourceAddr, 1, false, snoop->getOriginatorSeqNum(), true, simTime() + activeRouteTimeout);
-    }
-    else
-        updateRoutingTable(previousHopRoute, sourceAddr, 1, false, snoop->getOriginatorSeqNum(), true, simTime() + activeRouteTimeout);
-
-    neighborBattery->operator [](sourceAddr)=snoop->getBatteryPercent();
-
-    recLeachMsg(sourceAddr, snoop);
-    //calcPheromone(sourceAddr, snoop);
-//    updateChCandidate(sourceAddr, snoop->getBatteryPercent(),snoop->getMsgCoord());
-
-    if (simTime() > rebootTime + deletePeriod || rebootTime == 0) {
-        if(sourceAddr == chAddr){
-            //when CH battery is lower than the threshold, start CH election again
-            //if(strcmp(this->getParentModule()->getName(),"drone")){//not a drone
-                auto snoop = createSnoopMsg();
-                sendSnooping(snoop, 2);
-            //}
-        }else{
-            auto resp = createRespHBMsg(sourceAddr);
-            sendResp(resp, addressType->getBroadcastAddress(), 1);
-        }
-    }
-}
-
-void WirelessRouting::handleLeachMsg(const Ptr<CHDEF>& leach){
-    if(this->chAddr.isUnspecified()){
-        Coord thisCoord = Coord(baseMobility->getCurrentPosition());
-        Coord senderCoord = leach->getSenderCoord();
-        this->chDist = thisCoord.distance(senderCoord);
-        this->chAddr = leach->getSourceAddr();
-    }
-}
-
-void WirelessRouting::handleResp(const Ptr<RESPHB>& resp){
-
-
-    std::string netType = getModuleByPath("simpleNetwork")->par("networkType");
-    if(netType == "SC" || netType == "EECRM"){
-        updateBestHop(resp->getSourceAddr());
-    }else if(netType == "LAR"){
-        updateLarBestHop(resp->getSourceAddr(),resp->getSenderCoord());
-    }
-
-    //sprayNwait
-    vector<L3Address>::iterator it = std::find(sprayNWaitNeighb->begin(),sprayNWaitNeighb->end(),resp->getSourceAddr());
-    if(it == sprayNWaitNeighb->end()){
-       sprayNWaitNeighb->push_back(resp->getSourceAddr());
-    }
-
-    EV << "Resp message destined to: " << resp->getDestAddr() << ", initiated by: " << resp->getOriginatorAddr() <<
-            ", sent by: " << resp->getSourceAddr() << endl;
-    EV << "Self ipAddr: " << getSelfIPAddress() << endl;
-    map<L3Address,int>::iterator connectedIt;
-    EV << "Resp CH: " << resp->getChAddr() << endl;
-    if(resp->getChAddr() == getSelfIPAddress()){
-        //the device sending the HB resp has this device as CH
-        newConnectedDevs->operator [](resp->getSourceAddr()) = resp->getBatteryPercent();
-//        if(conncetedDevTimer->isScheduled())
-//            cancelEvent(conncetedDevTimer);
-//        scheduleAt(simTime()+0.5, conncetedDevTimer);
-    }
-
-    //for the leach CH election
-//    recLeachRespMsg(resp);
-}
-
-void WirelessRouting::handleCainFWD(const Ptr<CAINMSG>& cainmsg){
+void SatelliteRouting::handleCainFWD(const Ptr<CAINMSG>& cainmsg){
     EV << "Destined to: " << cainmsg->getDestAddr() << ", initiated by: " << cainmsg->getOriginatorAddr() <<
             ", sent by: " << cainmsg->getSourceAddr() << endl;
     EV << "CAIN destination: " << cainmsg->getCainDestAddr() << endl;
@@ -1967,7 +968,7 @@ void WirelessRouting::handleCainFWD(const Ptr<CAINMSG>& cainmsg){
 }
 
 
-void WirelessRouting::handleCainREQ(const Ptr<CAINMSG>& cainmsg){
+void SatelliteRouting::handleCainREQ(const Ptr<CAINMSG>& cainmsg){
     EV << "Destined to: " << cainmsg->getDestAddr() << ", initiated by: " << cainmsg->getOriginatorAddr() <<
                 ", sent by: " << cainmsg->getSourceAddr() << endl;
     EV << "Self ipAddr: " << getSelfIPAddress() << endl;
@@ -2056,7 +1057,7 @@ void WirelessRouting::handleCainREQ(const Ptr<CAINMSG>& cainmsg){
     }
 }
 
-void WirelessRouting::calcDelayMean(simtime_t msgInit){
+void SatelliteRouting::calcDelayMean(simtime_t msgInit){
     simtime_t timeDiff = simTime() - msgInit;
     meanDelay*=qtdMsg;
     meanDelay+=timeDiff;
@@ -2064,7 +1065,7 @@ void WirelessRouting::calcDelayMean(simtime_t msgInit){
 
 }
 
-void WirelessRouting::handleAntennaMsg(const Ptr<ANTENNA>& antennaMsg){
+void SatelliteRouting::handleAntennaMsg(const Ptr<ANTENNA>& antennaMsg){
     EV << "antenna message arriving with address: " << antennaMsg->getSourceAddr() << endl;
     if(strcmp(this->getParentModule()->getName(),"antenna")){
         //it is a regular node: the strcmp returns 1
@@ -2074,7 +1075,7 @@ void WirelessRouting::handleAntennaMsg(const Ptr<ANTENNA>& antennaMsg){
     }
 }
 
-void WirelessRouting::handleDroneMsg(const Ptr<DRONEMSG>& droneMsg){
+void SatelliteRouting::handleDroneMsg(const Ptr<DRONEMSG>& droneMsg){
     EV << "Drone message arriving with address: " << droneMsg->getSourceAddr() << endl;
     EV << "This addr: " << getSelfIPAddress() << endl;
     EV << "ch addr " << chAddr << endl;
@@ -2087,7 +1088,7 @@ void WirelessRouting::handleDroneMsg(const Ptr<DRONEMSG>& droneMsg){
 
 }
 
-void WirelessRouting::handleWeightMsg(const Ptr<FLWEIGHT>& weightMsg){
+void SatelliteRouting::handleWeightMsg(const Ptr<FLWEIGHT>& weightMsg){
     EV << "weight message arriving with address: " << weightMsg->getSourceAddr() << endl;
 
     recWeightMsg++;
@@ -2118,7 +1119,7 @@ void WirelessRouting::handleWeightMsg(const Ptr<FLWEIGHT>& weightMsg){
 
 }
 
-void WirelessRouting::handleCainRESP(const Ptr<CAINMSG>& cainmsg){
+void SatelliteRouting::handleCainRESP(const Ptr<CAINMSG>& cainmsg){
     EV << "Destined to: " << cainmsg->getDestAddr() << ", initiated by: " << cainmsg->getOriginatorAddr() <<
                 ", sent by: " << cainmsg->getSourceAddr() << endl;
     EV << "Self ipAddr: " << getSelfIPAddress() << endl;
@@ -2137,7 +1138,7 @@ void WirelessRouting::handleCainRESP(const Ptr<CAINMSG>& cainmsg){
 //    }
 }
 
-void WirelessRouting::handleCainHOP(const Ptr<CAINMSG>& cainmsg){
+void SatelliteRouting::handleCainHOP(const Ptr<CAINMSG>& cainmsg){
     EV << "Destined to: " << cainmsg->getDestAddr() << ", initiated by: " << cainmsg->getOriginatorAddr() <<
                 ", sent by: " << cainmsg->getSourceAddr() << endl;
     EV << "Self ipAddr: " << getSelfIPAddress() << endl;
@@ -2170,7 +1171,7 @@ void WirelessRouting::handleCainHOP(const Ptr<CAINMSG>& cainmsg){
     }
 }
 
-void WirelessRouting::handleCainERR(const Ptr<CAINMSG>& cainmsg){
+void SatelliteRouting::handleCainERR(const Ptr<CAINMSG>& cainmsg){
     EV << "Destined to: " << cainmsg->getDestAddr() << ", initiated by: " << cainmsg->getOriginatorAddr() <<
             ", sent by: " << cainmsg->getSourceAddr() << endl;
     EV << "Self ipAddr: " << getSelfIPAddress() << endl;
@@ -2189,7 +1190,7 @@ void WirelessRouting::handleCainERR(const Ptr<CAINMSG>& cainmsg){
 }
 
 
-void WirelessRouting::handleCainACK(const Ptr<CAINMSG>& cainmsg){
+void SatelliteRouting::handleCainACK(const Ptr<CAINMSG>& cainmsg){
     EV << "Destined to: " << cainmsg->getDestAddr() << ", initiated by: " << cainmsg->getOriginatorAddr() <<
                 ", sent by: " << cainmsg->getSourceAddr() << endl;
     EV << "Self ipAddr: " << getSelfIPAddress() << endl;
@@ -2234,7 +1235,7 @@ void WirelessRouting::handleCainACK(const Ptr<CAINMSG>& cainmsg){
     }
 }
 
-void WirelessRouting::handleFwdTimer(){
+void SatelliteRouting::handleFwdTimer(){
     if(strcmp(this->getParentModule()->getName(),"antenna")){
         map<pair<L3Address,int>,pair<L3Address,int>>::iterator respIt = respMap->begin();
         int bestChBattery = 0;
@@ -2316,7 +1317,7 @@ void WirelessRouting::handleFwdTimer(){
     }
 }
 
-void WirelessRouting::handleCainRREQ(const Ptr<CAINMSG>& cainmsg){
+void SatelliteRouting::handleCainRREQ(const Ptr<CAINMSG>& cainmsg){
     EV << "Destined to: " << cainmsg->getDestAddr() << ", initiated by: " << cainmsg->getOriginatorAddr() <<
                 ", sent by: " << cainmsg->getSourceAddr() << endl;
     EV << "Self ipAddr: " << getSelfIPAddress() << endl;
@@ -2340,7 +1341,7 @@ void WirelessRouting::handleCainRREQ(const Ptr<CAINMSG>& cainmsg){
     }
 }
 
-void WirelessRouting::handleCainRREP(const Ptr<CAINMSG>& cainmsg){
+void SatelliteRouting::handleCainRREP(const Ptr<CAINMSG>& cainmsg){
     EV << "Destined to: " << cainmsg->getDestAddr() << ", initiated by: " << cainmsg->getOriginatorAddr() <<
                 ", sent by: " << cainmsg->getSourceAddr() << endl;
     EV << "Self ipAddr: " << getSelfIPAddress() << endl;
@@ -2377,7 +1378,7 @@ void WirelessRouting::handleCainRREP(const Ptr<CAINMSG>& cainmsg){
     }
 }
 
-void WirelessRouting::handleSCMSG(const Ptr<CAINMSG>& cainmsg){
+void SatelliteRouting::handleSCMSG(const Ptr<CAINMSG>& cainmsg){
 
     if(recFwdMessages->find(cainmsg->getOriginatorAddr()) == recFwdMessages->end()){
         recFwdMessages->operator [](cainmsg->getOriginatorAddr())=cainmsg->getMsgId();
@@ -2436,7 +1437,7 @@ void WirelessRouting::handleSCMSG(const Ptr<CAINMSG>& cainmsg){
 }
 
 
-void WirelessRouting::handleCainLAR(const Ptr<CAINMSG>& cainmsg){
+void SatelliteRouting::handleCainLAR(const Ptr<CAINMSG>& cainmsg){
     EV << "Destined to: " << cainmsg->getDestAddr() << ", initiated by: " << cainmsg->getOriginatorAddr() <<
                 ", sent by: " << cainmsg->getSourceAddr() << endl;
     EV << "Self ipAddr: " << getSelfIPAddress() << endl;
@@ -2488,7 +1489,7 @@ void WirelessRouting::handleCainLAR(const Ptr<CAINMSG>& cainmsg){
     }
 }
 
-void WirelessRouting::handleCainSPR(const Ptr<CAINMSG>& cainmsg){
+void SatelliteRouting::handleCainSPR(const Ptr<CAINMSG>& cainmsg){
     EV << "Destined to: " << cainmsg->getDestAddr() << ", initiated by: " << cainmsg->getOriginatorAddr() <<
                 ", sent by: " << cainmsg->getSourceAddr() << endl;
     EV << "Self ipAddr: " << getSelfIPAddress() << endl;
@@ -2534,7 +1535,7 @@ void WirelessRouting::handleCainSPR(const Ptr<CAINMSG>& cainmsg){
     }
 }
 
-void WirelessRouting::handleCainBRAP(const Ptr<CAINMSG>& cainmsg){
+void SatelliteRouting::handleCainBRAP(const Ptr<CAINMSG>& cainmsg){
     EV << "Destined to: " << cainmsg->getDestAddr() << ", initiated by: " << cainmsg->getOriginatorAddr() <<
                     ", sent by: " << cainmsg->getSourceAddr() << endl;
     EV << "Self ipAddr: " << getSelfIPAddress() << endl;
@@ -2550,7 +1551,7 @@ void WirelessRouting::handleCainBRAP(const Ptr<CAINMSG>& cainmsg){
     }
 }
 
-void WirelessRouting::handleCainReply(const Ptr<CAINMSG>& cainmsg){
+void SatelliteRouting::handleCainReply(const Ptr<CAINMSG>& cainmsg){
     if(strcmp(this->getParentModule()->getName(),"antenna")){
         if(cainmsg->getOriginatorAddr() == getSelfIPAddress()){
             if(std::find(sentMessages->begin(), sentMessages->end(), cainmsg->getMsgId()) != sentMessages->end()){
@@ -2572,13 +1573,13 @@ void WirelessRouting::handleCainReply(const Ptr<CAINMSG>& cainmsg){
     }
 }
 
-void WirelessRouting::handleCainHopCount(const Ptr<CAINMSG>& cainmsg){
+void SatelliteRouting::handleCainHopCount(const Ptr<CAINMSG>& cainmsg){
     hopMap->operator [](cainmsg->getOriginatorAddr())=cainmsg->getHops()+1;
 }
 
 
 
-void WirelessRouting::updateRoutingTable(IRoute *route, const L3Address& nextHop, unsigned int hopCount, bool hasValidDestNum, unsigned int destSeqNum, bool isActive, simtime_t lifeTime)
+void SatelliteRouting::updateRoutingTable(IRoute *route, const L3Address& nextHop, unsigned int hopCount, bool hasValidDestNum, unsigned int destSeqNum, bool isActive, simtime_t lifeTime)
 {
     EV_DETAIL << "Updating existing route: " << route << endl;
 
@@ -2598,7 +1599,7 @@ void WirelessRouting::updateRoutingTable(IRoute *route, const L3Address& nextHop
     scheduleExpungeRoutes();
 }
 
-void WirelessRouting::recLeachMsg(L3Address neighAddr, const Ptr<SNOOPHB>& snoop){
+void SatelliteRouting::recLeachMsg(L3Address neighAddr, const Ptr<SNOOPHB>& snoop){
     //there is no two hop information
     int neighBattery = snoop->getBatteryPercent();
     Coord senderCoord = snoop->getMsgCoord();
@@ -2618,7 +1619,7 @@ void WirelessRouting::recLeachMsg(L3Address neighAddr, const Ptr<SNOOPHB>& snoop
     }
 }
 
-void WirelessRouting::calcPheromone(L3Address neighAddr, const Ptr<CAINMSG>& cainmsg){
+void SatelliteRouting::calcPheromone(L3Address neighAddr, const Ptr<CAINMSG>& cainmsg){
     if(cainmsg->getPheromone()!=0){
         EV << "This phero " << cainmsg->getPheromone() << endl;
         neighPherom->operator [](neighAddr) = cainmsg->getPheromone();
@@ -2639,7 +1640,7 @@ void WirelessRouting::calcPheromone(L3Address neighAddr, const Ptr<CAINMSG>& cai
     }
 }
 
-/*void WirelessRouting::recLeachRespMsg(const Ptr<RESPHB>& respMsg){
+/*void SatelliteRouting::recLeachRespMsg(const Ptr<RESPHB>& respMsg){
     //when the message has the two hop information
     int neighBattery = respMsg->getBatteryPercent();
     Coord senderCoord = respMsg->getSenderCoord();
@@ -2661,7 +1662,7 @@ void WirelessRouting::calcPheromone(L3Address neighAddr, const Ptr<CAINMSG>& cai
     }
 }*/
 
-void WirelessRouting::chDecision(){
+void SatelliteRouting::chDecision(){
     //reset CH address for the next round
     //this->chAddr = addressType->getUnspecifiedAddress();
     if(leachNeigh->size() != 0){
@@ -2680,14 +1681,14 @@ void WirelessRouting::chDecision(){
     resetLeachCalculation();
 }
 
-void WirelessRouting::resetLeachCalculation(){
+void SatelliteRouting::resetLeachCalculation(){
     delete(this->leachNeigh);
     this->leachNeigh = new std::vector<L3Address>();
     neighBatteryMean = 0.0;
     higherNeighBattery=0.0;
 }
 
-void WirelessRouting::updateChCandidate(L3Address candidate, int batteryPercent, Coord senderCoord){
+void SatelliteRouting::updateChCandidate(L3Address candidate, int batteryPercent, Coord senderCoord){
     int selfBattery = getDevBatteryPower();
     Coord devCoord = baseMobility->getCurrentPosition();
     double n_dist = devCoord.distance(senderCoord);
@@ -2748,7 +1749,7 @@ void WirelessRouting::updateChCandidate(L3Address candidate, int batteryPercent,
     EV << "CH: " << chAddr << endl << "CH battery: " << chBattery << endl;
 }
 
-IRoute *WirelessRouting::createRoute(const L3Address& destAddr, const L3Address& nextHop,
+IRoute *SatelliteRouting::createRoute(const L3Address& destAddr, const L3Address& nextHop,
         unsigned int hopCount, bool hasValidDestNum, unsigned int destSeqNum,
         bool isActive, simtime_t lifeTime)
 {
@@ -2786,19 +1787,19 @@ IRoute *WirelessRouting::createRoute(const L3Address& destAddr, const L3Address&
     return newRoute;
 }
 
-void WirelessRouting::handleStopOperation(LifecycleOperation *operation)
+void SatelliteRouting::handleStopOperation(LifecycleOperation *operation)
 {
     socket.close();
     clearState();
 }
 
-void WirelessRouting::handleCrashOperation(LifecycleOperation *operation)
+void SatelliteRouting::handleCrashOperation(LifecycleOperation *operation)
 {
     socket.destroy();
     clearState();
 }
 
-void WirelessRouting::clearState()
+void SatelliteRouting::clearState()
 {
     rerrCount = rreqCount = rreqId = sequenceNum = 0;
     addressToRreqRetries.clear();
@@ -2842,12 +1843,12 @@ void WirelessRouting::clearState()
         cancelEvent(leachChDecision);
 }
 
-L3Address WirelessRouting::getSelfIPAddress() const
+L3Address SatelliteRouting::getSelfIPAddress() const
 {
     return routingTable->getRouterIdAsGeneric();
 }
 
-void WirelessRouting::delayDatagram(Packet *datagram)
+void SatelliteRouting::delayDatagram(Packet *datagram)
 {
     const auto& networkHeader = getNetworkProtocolHeader(datagram);
     EV_DETAIL << "Queuing datagram, source " << networkHeader->getSourceAddress() << ", destination " << networkHeader->getDestinationAddress() << endl;
@@ -2855,13 +1856,13 @@ void WirelessRouting::delayDatagram(Packet *datagram)
     targetAddressToDelayedPackets.insert(std::pair<L3Address, Packet *>(target, datagram));
 }
 
-void WirelessRouting::socketDataArrived(UdpSocket *socket, Packet *packet)
+void SatelliteRouting::socketDataArrived(UdpSocket *socket, Packet *packet)
 {
     // process incoming packet
     processPacket(packet);
 }
 
-void WirelessRouting::handleWaitForRREP(WaitForRrep *rrepTimer)
+void SatelliteRouting::handleWaitForRREP(WaitForRrep *rrepTimer)
 {
     EV_INFO << "We didn't get any Route Reply within RREP timeout" << endl;
     L3Address destAddr = rrepTimer->getDestAddr();
@@ -2884,7 +1885,7 @@ void WirelessRouting::handleWaitForRREP(WaitForRrep *rrepTimer)
         sendSnooping(rreq, 0);
 }
 
-void WirelessRouting::cancelRouteDiscovery(const L3Address& destAddr)
+void SatelliteRouting::cancelRouteDiscovery(const L3Address& destAddr)
 {
     ASSERT(hasOngoingRouteDiscovery(destAddr));
     auto lt = targetAddressToDelayedPackets.lower_bound(destAddr);
@@ -2900,11 +1901,11 @@ void WirelessRouting::cancelRouteDiscovery(const L3Address& destAddr)
     waitForRREPTimers.erase(waitRREPIter);
 }
 
-int WirelessRouting::getDevBatteryPower(){
+int SatelliteRouting::getDevBatteryPower(){
     return (int)round(unit(energyStorage->getResidualEnergyCapacity()/energyStorage->getNominalEnergyCapacity()).get() * 100);
 }
 
-double WirelessRouting::backoffTimer(){
+double SatelliteRouting::backoffTimer(){
     int battery = getDevBatteryPower();
     int backoff;
     if(battery > 75)
@@ -2919,7 +1920,7 @@ double WirelessRouting::backoffTimer(){
 //    return host->getId();
 }
 
-double WirelessRouting::cainBackoff(){
+double SatelliteRouting::cainBackoff(){
     int p;
     if(currBackoff > 4)
         p = pow(2,4);
@@ -2928,7 +1929,7 @@ double WirelessRouting::cainBackoff(){
     return rand()%p+1;
 }
 
-void WirelessRouting::updateConnectedDevs(){
+void SatelliteRouting::updateConnectedDevs(){
 //    connectedDevs->clear();
     map<L3Address,pair<int,bool>>::iterator connectedIt = connectedDevs->begin();
     for(; connectedIt != connectedDevs->end(); connectedIt++)
@@ -2948,7 +1949,7 @@ void WirelessRouting::updateConnectedDevs(){
     emit(connectedDevsSignal, numConnectedDevs);
 }
 
-void WirelessRouting::updateBestHop(L3Address srcAddr){
+void SatelliteRouting::updateBestHop(L3Address srcAddr){
     scNeighbMap->operator [](srcAddr)++;
     if(scNeighbMap->operator [](srcAddr) > bestHopAddr->second){
         bestHopAddr->first=srcAddr;
@@ -2956,7 +1957,7 @@ void WirelessRouting::updateBestHop(L3Address srcAddr){
     }
 }
 
-void WirelessRouting::updateLarBestHop(L3Address srcAddr, Coord senderCoord){
+void SatelliteRouting::updateLarBestHop(L3Address srcAddr, Coord senderCoord){
     Coord thisCoord = baseMobility->getCurrentPosition();
     float dist = thisCoord.distance(senderCoord);
     if(bestLarHopAddr->first.isUnspecified()){
@@ -2970,7 +1971,7 @@ void WirelessRouting::updateLarBestHop(L3Address srcAddr, Coord senderCoord){
     }
 }
 
-int WirelessRouting::get_coverage_state(L3Address cain_dest){
+int SatelliteRouting::get_coverage_state(L3Address cain_dest){
     if(rl_type == "Euclidean1" || rl_type == "Euclidean2"  ||
                 rl_type == "Euclidean3"){
         double dist = distMap->at(cain_dest);
@@ -2992,7 +1993,7 @@ int WirelessRouting::get_coverage_state(L3Address cain_dest){
     return 0;
 }
 
-void WirelessRouting::calculate_coverage_reward(int state,bool decision,L3Address cain_dest){
+void SatelliteRouting::calculate_coverage_reward(int state,bool decision,L3Address cain_dest){
     double percent;
     if(rl_type == "Euclidean1" || rl_type == "Euclidean2"  ||
                 rl_type == "Euclidean3"){
@@ -3040,14 +2041,14 @@ void WirelessRouting::calculate_coverage_reward(int state,bool decision,L3Addres
 }
 
 
-void WirelessRouting::updatePowerThreshold(int state){
+void SatelliteRouting::updatePowerThreshold(int state){
     /*if(state == 0 && powerThresh > 5){
         powerThresh-=5;
     }else if(state == 2 && powerThresh < 95)
         powerThresh+=5;*/
 }
 
-bool WirelessRouting::sendMessageML(int state){
+bool SatelliteRouting::sendMessageML(int state){
     if(qMatrix[state][0]>=qMatrix[state][1])//state0 (send) is the best option
         return true;
     return false;//state1 (not send) is the best option
@@ -3066,7 +2067,7 @@ bool WirelessRouting::sendMessageML(int state){
     return false;*/
 }
 
-void WirelessRouting::calculate_q_matrix(){
+void SatelliteRouting::calculate_q_matrix(){
     float discount_rate = 0.95;
     int n_interations = 100;
 
@@ -3100,7 +2101,7 @@ void WirelessRouting::calculate_q_matrix(){
     }
 }
 
-void WirelessRouting::calculate_drone_q_matrix(){
+void SatelliteRouting::calculate_drone_q_matrix(){
     float discount_rate = 0.95;
     int n_interations = 100;
 
@@ -3134,7 +2135,7 @@ void WirelessRouting::calculate_drone_q_matrix(){
     }
 }
 
-void WirelessRouting::calculateDnnDecision(L3Address cainDest){
+void SatelliteRouting::calculateDnnDecision(L3Address cainDest){
     for(int i = 0; i<100; i++){
         int state = get_coverage_state(cainDest);
         double dnnDist;
@@ -3164,7 +2165,7 @@ void WirelessRouting::calculateDnnDecision(L3Address cainDest){
     }
 }
 
-double WirelessRouting::calculateDnnDist(int state, double dist, std::string rl_type){
+double SatelliteRouting::calculateDnnDist(int state, double dist, std::string rl_type){
     if(rl_type == "Euclidean1" || rl_type == "Hop1"){
         //dist-state to normalize the distance
         double distPercentage = (dist-state)/qtd_ranges;
@@ -3187,7 +2188,7 @@ double WirelessRouting::calculateDnnDist(int state, double dist, std::string rl_
     return 0.0;
 }
 
-void WirelessRouting::create_reward_matrix(){
+void SatelliteRouting::create_reward_matrix(){
     vector<float>* a0;
     vector<float>* a1;
     if(rl_type == "Euclidean1" || rl_type == "Hop1"){
@@ -3317,12 +2318,12 @@ void WirelessRouting::create_reward_matrix(){
 }
 
 
-WirelessRouting::WirelessRouting() {
+SatelliteRouting::SatelliteRouting() {
     // TODO Auto-generated constructor stub
 
 }
 
-WirelessRouting::~WirelessRouting() {
+SatelliteRouting::~SatelliteRouting() {
 //    clearState();
 //    delete helloMsgTimer;
 //    delete expungeTimer;
@@ -3331,5 +2332,5 @@ WirelessRouting::~WirelessRouting() {
 //    delete blacklistTimer;
 }
 
-} /* namespace wirelessrouting */
+} /* namespace SatelliteRouting */
 } /* namespace  inet*/

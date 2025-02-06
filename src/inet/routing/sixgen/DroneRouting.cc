@@ -132,11 +132,6 @@ void DroneRouting::initialize(int stage)
         routes = new map<pair<L3Address,L3Address>,pair<L3Address,int>>();
         revRoute = new map<pair<L3Address,L3Address>,L3Address>();
 
-        bestHopAddr = new pair<L3Address,int>();
-        scNeighbMap = new map<L3Address,int>();
-        bestLarHopAddr= new pair<L3Address,float>();
-        sprayNWaitNeighb = new vector<L3Address>();
-
         fwdAck = new vector<int>();
         reqAck = new vector<int>();
         hopAck = new vector<int>();
@@ -200,9 +195,6 @@ void DroneRouting::initialize(int stage)
         network=network->createDnn(3, 2, 3, 1);
         droneNetwork = droneNetwork->createDnn(2,2,3,1);
 
-    }
-    else if (stage == INITSTAGE_APPLICATION_LAYER){
-        oracle_ = check_and_cast<Oracle*>(getSimulation()->getModuleByPath("Oracle"));
     }
 }
 
@@ -271,6 +263,30 @@ void DroneRouting::handleMessageWhenUp(cMessage *msg)
     }
     else
         socket.processMessage(msg);
+}
+
+
+void DroneRouting::handleWaitForRREP(WaitForRrep *rrepTimer)
+{
+    EV_INFO << "We didn't get any Route Reply within RREP timeout" << endl;
+    L3Address destAddr = rrepTimer->getDestAddr();
+
+    ASSERT(addressToRreqRetries.find(destAddr) != addressToRreqRetries.end());
+    if (addressToRreqRetries[destAddr] == rreqRetries) {
+        cancelRouteDiscovery(destAddr);
+        EV_WARN << "Re-discovery attempts for node " << destAddr << " reached RREQ_RETRIES= " << rreqRetries << " limit. Stop sending RREQ." << endl;
+        return;
+    }
+    //if(strcmp(this->getParentModule()->getName(),"drone")){//not a drone
+        auto rreq = createSnoopMsg();
+
+
+        // the node MAY try again to discover a route by broadcasting another
+        // RREQ, up to a maximum of RREQ_RETRIES times at the maximum TTL value.
+        if (rrepTimer->getLastTTL() == netDiameter) // netDiameter is the maximum TTL value
+            addressToRreqRetries[destAddr]++;
+
+        sendSnooping(rreq, 0);
 }
 
 void DroneRouting::handleBlackListTimer()
@@ -547,50 +563,6 @@ void DroneRouting::sendCainMsg(const Ptr<CAINMSG>& cainmsg, unsigned int timeToL
 
 //    if(!cainmsg->getDestAddr().isUnspecified())
         sendHeartBeatpkg(cainmsg,addressType->getBroadcastAddress(),timeToLive,delay);
-}
-
-void DroneRouting::sendSprayMsg(const Ptr<CAINMSG>& cainMsg){
-
-    int numNeighb = cainMsg->getSprayQtdNeigh();
-    vector<int>* sentNeighbIndex = new vector<int>();
-
-
-    if(numNeighb >= sprayNWaitNeighb->size()){
-
-        for(int i = 0; i < sprayNWaitNeighb->size(); i++){
-
-            int randIndex = rand() % sprayNWaitNeighb->size();
-            vector<int>::iterator it = std::find(sentNeighbIndex->begin(),sentNeighbIndex->end(), randIndex);
-            while(it != sentNeighbIndex->end()){
-                randIndex = rand() % sprayNWaitNeighb->size();
-                it = std::find(sentNeighbIndex->begin(),sentNeighbIndex->end(), randIndex);
-            }
-            sentNeighbIndex->push_back(randIndex);
-            auto cainMsgDup = makeShared<CAINMSG>();
-            cainMsgDup = cainMsg->dup();
-            cainMsgDup->setCainDestAddr(sprayNWaitNeighb->at(randIndex));
-            cainMsgDup->setSenderCoord(baseMobility->getCurrentPosition());
-            sendCainMsg(cainMsgDup, 2,0);
-
-        }
-    }else{
-        for(int i = 0; i < numNeighb; i++){
-
-            int randIndex = rand() % numNeighb;
-            vector<int>::iterator it = std::find(sentNeighbIndex->begin(),sentNeighbIndex->end(), randIndex);
-            while(it != sentNeighbIndex->end()){
-                randIndex = rand() % numNeighb;
-                it = std::find(sentNeighbIndex->begin(),sentNeighbIndex->end(), randIndex);
-            }
-            sentNeighbIndex->push_back(randIndex);
-            auto cainMsgDup = makeShared<CAINMSG>();
-            cainMsgDup = cainMsg->dup();
-            cainMsgDup->setCainDestAddr(sprayNWaitNeighb->at(randIndex));
-            cainMsgDup->setSenderCoord(baseMobility->getCurrentPosition());
-            sendCainMsg(cainMsgDup, 2,0);
-
-        }
-    }
 }
 
 void DroneRouting::sendHeartBeatpkg(const Ptr<HeartBeat>& hbpacket, const L3Address& destAddr, unsigned int timeToLive, double delay){
@@ -967,31 +939,14 @@ void DroneRouting::handleCainFWD(const Ptr<CAINMSG>& cainmsg){
     EV << "CAIN destination: " << cainmsg->getCainDestAddr() << endl;
     EV << "Self ipAddr: " << getSelfIPAddress() << endl;
 
-    calcPheromone(cainmsg->getSourceAddr(),cainmsg);
-    calculate_q_matrix();
-    std::string netType = getModuleByPath("simpleNetwork")->par("networkType");
-    if(netType == "SC" || netType == "EECRM"){
-        updateBestHop(cainmsg->getSourceAddr());
-    }else if(netType == "LAR"){
-        updateLarBestHop(cainmsg->getSourceAddr(),cainmsg->getSenderCoord());
-    }
-
     calcDelayMean(cainmsg->getTimeInit());
 
-    double back = 0;
-
-    oracle_->insertRecNode(getSelfIPAddress());
-
-    int hops=cainmsg->getHops();
-    cainmsg->setHops(++hops);
-
-    if(!strcmp(this->getParentModule()->getName(),"drone") && getSelfIPAddress() == cainmsg->getCainDestAddr()){
+    if(this->getSelfIPAddress() == cainmsg->getDestAddr()){
         EV << "Drone receiving message" << endl;
         Coord ueCoord = cainmsg->getSenderCoord();
         Coord thisCoord = baseMobility->getCurrentPosition();
         droneDist = thisCoord.distance(ueCoord);
         emit(droneDistSignal,droneDist);
-
 
         recDroneMsg++;
         emit(recDroneMsgSignal,recDroneMsg);
@@ -1017,7 +972,6 @@ void DroneRouting::handleCainFWD(const Ptr<CAINMSG>& cainmsg){
             cainmsg->setCainDestAddr(satelliteAddr);
             sendCainMsg(cainmsg, 1, 0);
         }
-
     }
 }
 
@@ -1040,43 +994,11 @@ void DroneRouting::handleAntennaMsg(const Ptr<ANTENNA>& antennaMsg){
 void DroneRouting::handleDroneMsg(const Ptr<DRONEMSG>& droneMsg){
     EV << "Drone message arriving with address: " << droneMsg->getSourceAddr() << endl;
     EV << "This addr: " << getSelfIPAddress() << endl;
-    EV << "ch addr " << chAddr << endl;
 
     Coord thisCoord = Coord(baseMobility->getCurrentPosition());
     Coord senderCoord = droneMsg->getSenderCoord();
     double dist = thisCoord.distance(senderCoord);
     droneDistMap->operator [](droneMsg->getSourceAddr()) = dist;
-}
-
-void DroneRouting::handleWeightMsg(const Ptr<FLWEIGHT>& weightMsg){
-    EV << "weight message arriving with address: " << weightMsg->getSourceAddr() << endl;
-
-    recWeightMsg++;
-    emit(recWeightMsgSignal,recWeightMsg);
-
-    std::vector<float> *weightVector = new std::vector<float>();
-    weightVector->push_back(weightMsg->getW11());
-    weightVector->push_back(weightMsg->getW12());
-    weightVector->push_back(weightMsg->getW13());
-    weightVector->push_back(weightMsg->getW21());
-    weightVector->push_back(weightMsg->getW22());
-    weightVector->push_back(weightMsg->getW23());
-    weightVector->push_back(weightMsg->getW31());
-    weightVector->push_back(weightMsg->getW32());
-    weightVector->push_back(weightMsg->getW33());
-    weightVector->push_back(weightMsg->getWo1());
-    weightVector->push_back(weightMsg->getWo2());
-    weightVector->push_back(weightMsg->getWo3());
-
-    if(this->chAddr == getSelfIPAddress()){
-        this->network->setNeuronTotalWeights(weightVector);
-        this->weightMsgCounter++;
-        this->network->updateWeights(this->weightMsgCounter,this->chAddr == getSelfIPAddress());
-    }else if(weightMsg->getSourceAddr() == chAddr){
-        this->network->setNeuronTotalWeights(weightVector);
-        this->network->updateWeights(this->weightMsgCounter,this->chAddr == getSelfIPAddress());
-    }
-
 }
 
 void DroneRouting::handleCainRESP(const Ptr<CAINMSG>& cainmsg){
@@ -1118,46 +1040,6 @@ void DroneRouting::updateRoutingTable(IRoute *route, const L3Address& nextHop, u
     scheduleExpungeRoutes();
 }
 
-void DroneRouting::recLeachMsg(L3Address neighAddr, const Ptr<SNOOPHB>& snoop){
-    //there is no two hop information
-    int neighBattery = snoop->getBatteryPercent();
-    Coord senderCoord = snoop->getMsgCoord();
-    Coord devCoord = baseMobility->getCurrentPosition();
-    double dist = devCoord.distance(senderCoord);
-    if(std::find(this->leachNeigh->begin(),this->leachNeigh->end(),neighAddr) == this->leachNeigh->end()){
-        int neighNum = leachNeigh->size();
-        leachNeigh->push_back(neighAddr);
-        neighBatteryMean*=neighNum;
-        neighBatteryMean+=neighBattery;
-        neighBatteryMean/=(neighNum+1);
-        if(neighBattery > higherNeighBattery)
-            higherNeighBattery = neighBattery;
-        neighDistMean*=neighNum;
-        neighDistMean+=dist*0.02;
-        neighDistMean/=(neighNum+1);
-    }
-}
-
-void DroneRouting::calcPheromone(L3Address neighAddr, const Ptr<CAINMSG>& cainmsg){
-    if(cainmsg->getPheromone()!=0){
-        EV << "This phero " << cainmsg->getPheromone() << endl;
-        neighPherom->operator [](neighAddr) = cainmsg->getPheromone();
-        EV << neighAddr << endl;
-        EV << neighPherom->operator [](neighAddr) << endl;
-        map<L3Address,double>::iterator connectedIt = neighPherom->begin();
-        double sumPhero=0.0;
-        if(!neighPherom->empty()){
-            for(; connectedIt != neighPherom->end(); connectedIt++){
-                EV << "neigh phero " << neighPherom->operator [](connectedIt->first) << endl;
-                sumPhero+=neighPherom->operator [](connectedIt->first);
-            }
-            EV << "sumPhero " << sumPhero << endl;
-            probPhero=this->phero/(sumPhero);
-            perhomoneS=this->phero;
-            emit(pheromoneSignal, perhomoneS);
-        }
-    }
-}
 
 /*void DroneRouting::recLeachRespMsg(const Ptr<RESPHB>& respMsg){
     //when the message has the two hop information
@@ -1181,91 +1063,12 @@ void DroneRouting::calcPheromone(L3Address neighAddr, const Ptr<CAINMSG>& cainms
     }
 }*/
 
-void DroneRouting::chDecision(){
-    //reset CH address for the next round
-    this->chAddr = addressType->getUnspecifiedAddress();
-    if(leachNeigh->size() != 0){
-        double leachCalc = (getDevBatteryPower()/neighBatteryMean)*chNum;
-        double energyFactor = getDevBatteryPower()/higherNeighBattery;
-        double leachFactor = energyFactor/neighDistMean;
-        leachCalc*=leachFactor;
-        double chProbability = leachCalc < 1 ? leachCalc : 1;
-        double randNum = (float)rand()/((float)RAND_MAX)/2;
-        if(randNum <= chProbability){
-            this->chAddr = getSelfIPAddress();
-            auto chDefMsg = createChDefMsg();
-            sendHeartBeatpkg(chDefMsg, addressType->getBroadcastAddress(), 1, 0);
-        }
-    }
-    resetLeachCalculation();
-}
 
 void DroneRouting::resetLeachCalculation(){
     delete(this->leachNeigh);
     this->leachNeigh = new std::vector<L3Address>();
     neighBatteryMean = 0.0;
     higherNeighBattery=0.0;
-}
-
-void DroneRouting::updateChCandidate(L3Address candidate, int batteryPercent, Coord senderCoord){
-    int selfBattery = getDevBatteryPower();
-    Coord devCoord = baseMobility->getCurrentPosition();
-    double n_dist = devCoord.distance(senderCoord);
-    double o_dist;
-    bool mlEnable = getModuleByPath("simpleNetwork")->par("mlEnable");
-    if(chCoord == Coord(0,0,0)){
-        if(mlEnable)
-            o_dist = 10000;
-        else
-            o_dist = 0;
-    } else
-        o_dist = devCoord.distance(chCoord);
-    if(!candidate.isUnspecified()){
-        if(candidate == chAddr){
-            newChBattery = batteryPercent;
-            newChAddr = candidate;
-            chCoord = senderCoord;
-        }else{
-            if(mlEnable){
-                if(n_dist < o_dist){
-                    if(selfBattery < batteryPercent){
-                        if(batteryPercent > chBattery && batteryPercent >= batteryThresh){
-                            newChBattery = batteryPercent;
-                            newChAddr = candidate;
-                            chCoord = senderCoord;
-                        }
-                    }else{
-                        if(selfBattery > chBattery){
-                            if(selfBattery >= batteryThresh){
-                                newChBattery = selfBattery;
-                                newChAddr = getSelfIPAddress();
-                                chCoord = senderCoord;
-                            }
-                        }
-                    }
-                }
-            }else{
-                if(n_dist > o_dist){
-                    if(selfBattery < batteryPercent){
-                        if(batteryPercent > chBattery && batteryPercent >= batteryThresh){
-                            newChBattery = batteryPercent;
-                            newChAddr = candidate;
-                            chCoord = senderCoord;
-                        }
-                    }else{
-                        if(selfBattery > chBattery){
-                            if(selfBattery >= batteryThresh){
-                                newChBattery = selfBattery;
-                                newChAddr = getSelfIPAddress();
-                                chCoord = senderCoord;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    EV << "CH: " << chAddr << endl << "CH battery: " << chBattery << endl;
 }
 
 IRoute *DroneRouting::createRoute(const L3Address& destAddr, const L3Address& nextHop,
@@ -1363,28 +1166,6 @@ void DroneRouting::socketDataArrived(UdpSocket *socket, Packet *packet)
     processPacket(packet);
 }
 
-void DroneRouting::handleWaitForRREP(WaitForRrep *rrepTimer)
-{
-    EV_INFO << "We didn't get any Route Reply within RREP timeout" << endl;
-    L3Address destAddr = rrepTimer->getDestAddr();
-
-    ASSERT(addressToRreqRetries.find(destAddr) != addressToRreqRetries.end());
-    if (addressToRreqRetries[destAddr] == rreqRetries) {
-        cancelRouteDiscovery(destAddr);
-        EV_WARN << "Re-discovery attempts for node " << destAddr << " reached RREQ_RETRIES= " << rreqRetries << " limit. Stop sending RREQ." << endl;
-        return;
-    }
-    //if(strcmp(this->getParentModule()->getName(),"drone")){//not a drone
-        auto rreq = createSnoopMsg();
-
-
-        // the node MAY try again to discover a route by broadcasting another
-        // RREQ, up to a maximum of RREQ_RETRIES times at the maximum TTL value.
-        if (rrepTimer->getLastTTL() == netDiameter) // netDiameter is the maximum TTL value
-            addressToRreqRetries[destAddr]++;
-
-        sendSnooping(rreq, 0);
-}
 
 void DroneRouting::cancelRouteDiscovery(const L3Address& destAddr)
 {
@@ -1406,187 +1187,15 @@ int DroneRouting::getDevBatteryPower(){
     return (int)round(unit(energyStorage->getResidualEnergyCapacity()/energyStorage->getNominalEnergyCapacity()).get() * 100);
 }
 
-double DroneRouting::backoffTimer(){
-    int battery = getDevBatteryPower();
-    int backoff;
-    if(battery > 75)
-        backoff = 2;
-    else if(battery <= 75 && battery > 50)
-        backoff = 4;
-    else if(battery <=50 && battery > 25)
-        backoff = 8;
-    else
-        backoff = 16;
-    return (rand()%backoff+1);//+(rand()%host->getId()+1);
-//    return host->getId();
-}
-
-double DroneRouting::cainBackoff(){
-    int p;
-    if(currBackoff > 4)
-        p = pow(2,4);
-    else
-        p = pow(2,currBackoff);
-    return rand()%p+1;
-}
-
-void DroneRouting::updateConnectedDevs(){
-//    connectedDevs->clear();
-    map<L3Address,pair<int,bool>>::iterator connectedIt = connectedDevs->begin();
-    for(; connectedIt != connectedDevs->end(); connectedIt++)
-        connectedDevs->operator [](connectedIt->first).second = false;
-
-    map<L3Address,int>::iterator newConnectedIt = newConnectedDevs->begin();
-    for(; newConnectedIt != newConnectedDevs->end(); newConnectedIt++)
-        connectedDevs->operator [](newConnectedIt->first) = pair<int,bool>(newConnectedIt->second,true);
-    newConnectedDevs->clear();
-    connectedIt = connectedDevs->begin();
-    EV << "Devices connected to " << getSelfIPAddress() << ":" << endl;
-    for(; connectedIt != connectedDevs->end(); connectedIt++){
-        EV << "Address: " << connectedIt->first << "| Battery: " << connectedIt->second.first <<
-                "| Active:" << (connectedIt->second.second ? "True" : "False")  << endl;
-    }
-    numConnectedDevs = connectedDevs->size();
-    emit(connectedDevsSignal, numConnectedDevs);
-}
-
-void DroneRouting::updateBestHop(L3Address srcAddr){
-    scNeighbMap->operator [](srcAddr)++;
-    if(scNeighbMap->operator [](srcAddr) > bestHopAddr->second){
-        bestHopAddr->first=srcAddr;
-        bestHopAddr->second=scNeighbMap->operator [](srcAddr);
-    }
-}
-
-void DroneRouting::updateLarBestHop(L3Address srcAddr, Coord senderCoord){
-    Coord thisCoord = baseMobility->getCurrentPosition();
-    float dist = thisCoord.distance(senderCoord);
-    if(bestLarHopAddr->first.isUnspecified()){
-        bestLarHopAddr->first=srcAddr;
-        bestLarHopAddr->second=dist;
-    }else{
-        if(dist < bestLarHopAddr->second){
-            bestLarHopAddr->first=srcAddr;
-            bestLarHopAddr->second=dist;
-        }
-    }
-}
-
-int DroneRouting::getState(int currState, bool reward){
-    int val = rand()%101;
-    float p_0,p_1,p_2;
-    int newState;
-
-    if(reward){//a0
-        p_0=stateMatrix[currState][0]->at(0);
-        p_1=stateMatrix[currState][0]->at(1);
-        p_2=stateMatrix[currState][0]->at(2);
-    }else{//a1
-        p_0=stateMatrix[currState][1]->at(0);
-        p_1=stateMatrix[currState][1]->at(1);
-        p_2=stateMatrix[currState][1]->at(2);
-    }
-
-    if(val < p_0){
-        newState=0;
-    }else if(val < p_0+p_1){
-        newState=1;
-    }else{
-        newState=2;
-    }
-
-    return newState;
-}
-
-int DroneRouting::get_coverage_state(L3Address cain_dest){
-    if(rl_type == "Euclidean1" || rl_type == "Euclidean2"  ||
-                rl_type == "Euclidean3"){
-        double dist = distMap->at(cain_dest);
-        for(int i=0;i<qtd_ranges;i++){
-            if(dist<=(i+1)*(com_range/qtd_ranges)){
-                return i;
-            }
-        }
-    }else if(rl_type == "Hop1" || rl_type == "Hop2"  ||
-            rl_type == "Hop3"){
-
-        long hop = hopMap->at(cain_dest);
-        for(int i=0;i<qtd_ranges;i++){
-            if(hop<=(i+1)*(hop_range/qtd_ranges)){
-                return i;
-            }
-        }
-    }
-}
-
 int DroneRouting::get_drone_coverage_state(L3Address cain_dest){
-
-
-            double dist = droneDistMap->at(cain_dest);
-            for(int i=0;i<qtd_ranges;i++){
-                if(dist<=(i+1)*(com_range/qtd_ranges)){
-                    return i;
-                }
-            }
-        /*}else if(rl_type == "Hop1" || rl_type == "Hop2"  ||
-                rl_type == "Hop3"){
-
-            long hop = hopMap->at(cain_dest);
-            for(int i=0;i<qtd_ranges;i++){
-                if(hop<=(i+1)*(hop_range/qtd_ranges)){
-                    return i;
-                }
-            }
-        }*/
-}
-
-void DroneRouting::calculate_coverage_reward(int state,bool decision,L3Address cain_dest){
-    double percent;
-    if(rl_type == "Euclidean1" || rl_type == "Euclidean2"  ||
-                rl_type == "Euclidean3"){
-        double dist = distMap->at(cain_dest);
-        for(int i=0;i<qtd_ranges;i++){
-            if(dist<=(i+1)*(com_range/qtd_ranges)){
-                percent=dist/((i+1)*(com_range/qtd_ranges));
-                percent*=100;
-                break;
-            }
-        }
-    }else if(rl_type == "Hop1" || rl_type == "Hop2"  ||
-            rl_type == "Hop3"){
-
-        long hop = hopMap->at(cain_dest);
-        for(int i=0;i<qtd_ranges;i++){
-            if(hop<=(i+1)*(hop_range/qtd_ranges)){
-                percent=hop/((i+1)*(hop_range/qtd_ranges));
-                percent*=100;
-                break;
-            }
+    double dist = droneDistMap->at(cain_dest);
+    for(int i=0;i<qtd_ranges;i++){
+        if(dist<=(i+1)*(com_range/qtd_ranges)){
+            return i;
         }
     }
-
-    switch (state) {
-        case 0:
-            stateMatrix[state][decision]->at(0)*=n_s0;
-            stateMatrix[state][decision]->at(0)+=percent;
-            n_s0++;
-            stateMatrix[state][decision]->at(0)/=n_s0;
-            break;
-        case 1:
-            stateMatrix[state][decision]->at(1)*=n_s1;
-            stateMatrix[state][decision]->at(1)+=percent;
-            n_s1++;
-            stateMatrix[state][decision]->at(1)/=n_s1;
-            break;
-        case 2:
-            stateMatrix[state][decision]->at(2)*=n_s2;
-            stateMatrix[state][decision]->at(2)+=percent;
-            n_s2++;
-            stateMatrix[state][decision]->at(2)/=n_s2;
-            break;
-    }
+    return 0;
 }
-
 
 
 void DroneRouting::calculate_drone_coverage_reward(int state,bool decision,L3Address cain_dest){
@@ -1636,115 +1245,10 @@ void DroneRouting::calculate_drone_coverage_reward(int state,bool decision,L3Add
     }
 }
 
-void DroneRouting::updateState(int currState, int newState, bool decision){
-    if(decision){//a0
-        if(newState==0){
-            if(stateMatrix[currState][0]->at(newState)<90)
-                stateMatrix[currState][0]->at(newState)+=5;
-            if(stateMatrix[currState][0]->at(1)>5)
-                stateMatrix[currState][0]->at(1)-=2.5;
-            if(stateMatrix[currState][0]->at(2)>5)
-                stateMatrix[currState][0]->at(2)-=2.5;
-        }else if(newState==1){
-            if(stateMatrix[currState][0]->at(newState)<90)
-                stateMatrix[currState][0]->at(newState)+=5;
-            if(stateMatrix[currState][0]->at(0)>5)
-                stateMatrix[currState][0]->at(0)-=2.5;
-            if(stateMatrix[currState][0]->at(2)>5)
-                stateMatrix[currState][0]->at(2)-=2.5;
-        }else{
-            if(stateMatrix[currState][0]->at(newState)<90)
-                stateMatrix[currState][0]->at(newState)+=5;
-            if(stateMatrix[currState][0]->at(0)>5)
-                stateMatrix[currState][0]->at(0)-=2.5;
-            if(stateMatrix[currState][0]->at(1)>5)
-                stateMatrix[currState][0]->at(1)-=2.5;
-        }
-    }else{
-        if(newState==0){
-            if(stateMatrix[currState][0]->at(newState)>5)
-                stateMatrix[currState][0]->at(newState)-=5;
-            if(stateMatrix[currState][0]->at(1)<90)
-                stateMatrix[currState][0]->at(1)+=2.5;
-            if(stateMatrix[currState][0]->at(2)<90)
-                stateMatrix[currState][0]->at(2)+=2.5;
-        }else if(newState==1){
-            if(stateMatrix[currState][0]->at(newState)>5)
-                stateMatrix[currState][0]->at(newState)-=5;
-            if(stateMatrix[currState][0]->at(0)<90)
-                stateMatrix[currState][0]->at(0)+=2.5;
-            if(stateMatrix[currState][0]->at(2)<90)
-                stateMatrix[currState][0]->at(2)+=2.5;
-        }else{
-            if(stateMatrix[currState][0]->at(newState)>5)
-                stateMatrix[currState][0]->at(newState)-=5;
-            if(stateMatrix[currState][0]->at(0)<90)
-                stateMatrix[currState][0]->at(0)+=2.5;
-            if(stateMatrix[currState][0]->at(1)<90)
-                stateMatrix[currState][0]->at(1)+=2.5;
-        }
-    }
-}
-
-
-void DroneRouting::updatePowerThreshold(int state){
-    /*if(state == 0 && powerThresh > 5){
-        powerThresh-=5;
-    }else if(state == 2 && powerThresh < 95)
-        powerThresh+=5;*/
-}
-
 bool DroneRouting::sendMessageML(int state){
     if(qMatrix[state][0]>=qMatrix[state][1])//state0 (send) is the best option
         return true;
-    return false;//state1 (not send) is the best option
-    /*double prob=rand()%100+1;
-    if(prob <= send_prob)
-        return true;
-    return false;*/
-    /*int selfBattery = getDevBatteryPower();
-    if(powerThresh<selfBattery){
-        double sendProb=(1-(powerThresh/selfBattery))*100;
-        int val = rand()%101;
-        if(sendProb <= val)
-            return true;
-        return false;
-    }
-    return false;*/
-}
-
-void DroneRouting::calculate_q_matrix(){
-    float discount_rate = 0.95;
-    int n_interations = 100;
-
-    for(int i=0; i <= n_interations; i++){
-        float q_prev[3][4];
-
-        for(int j=0; j<3; j++)
-            for(int k=0; k<4;k++)
-                q_prev[j][k]=qMatrix[j][k];
-        for(int s=0;s<3;s++){
-          for(int a=0; a<4;a++){
-                float incr=0;
-                for(int sp=0;sp<3;sp++){
-                    float max=0;
-                      for(int al=0; al<4;al++){
-                        if(q_prev[sp][al]>max)
-                            max=q_prev[sp][al];
-                      }
-                      float sMatr=stateMatrix[s][a]->at(sp);
-                      float rMatr=rewardMatrix[s][a]->at(sp);
-                      if(qtdMsg){
-                          double weight = meanDelay.dbl()*pow(10,6);
-                          weight = 1/weight;
-                          incr+=stateMatrix[s][a]->at(sp)*(rewardMatrix[s][a]->at(sp)*weight+discount_rate*max);
-                      }else
-                          incr+=stateMatrix[s][a]->at(sp)*(rewardMatrix[s][a]->at(sp)+discount_rate*max);
-                }
-                qMatrix[s][a]=incr;
-            }
-        }
-    }
+    return false;
 }
 
 void DroneRouting::calculate_drone_q_matrix(){
@@ -1778,36 +1282,6 @@ void DroneRouting::calculate_drone_q_matrix(){
                 droneQMatrix[s][a]=incr;
             }
         }
-    }
-}
-
-void DroneRouting::calculateDnnDecision(L3Address cainDest){
-    for(int i = 0; i<100; i++){
-        int state = get_coverage_state(cainDest);
-        double dnnDist;
-        if(rl_type == "Euclidean1" || rl_type == "Euclidean2" ||
-                rl_type == "Euclidean3")
-            dnnDist = calculateDnnDist(state, distMap->at(cainDest),rl_type);
-        else
-            dnnDist = calculateDnnDist(state, hopMap->at(cainDest),rl_type);
-        std::vector<bool> *decisionVect = network->calculateDnn(dnnDist, meanDelay.dbl()*pow(10,6),probPhero);
-        int decision;
-
-        if(decisionVect->operator [](0)){//true
-            if(decisionVect->operator [](1))//true-true
-                decision=3;
-            else//true-false
-                decision=2;
-        }else{//false
-            if(decisionVect->operator [](1))//false-true
-                decision=1;
-            else//false-false
-                decision=0;
-        }
-        calculate_coverage_reward(state, decision, cainDest);
-        calculate_q_matrix();
-        float result = qMatrix[state][decision];
-        network->updateDnn(result,decisionVect);
     }
 }
 
@@ -1873,6 +1347,7 @@ double DroneRouting::calculateDnnDist(int state, double dist, std::string rl_typ
         //dist-state to normalize the distance
         return (dist-state)/qtd_ranges;
     }
+    return 0.0;
 }
 
 void DroneRouting::create_reward_matrix(){
