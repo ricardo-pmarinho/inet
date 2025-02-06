@@ -315,7 +315,6 @@ private:
     virtual void handleCrashOperation(LifecycleOperation *operation) override;
 
 
-    void updateChCandidate(L3Address candidate, int batteryPercent, Coord senderCoord);
 public:
     SatelliteRouting();
     virtual ~SatelliteRouting();

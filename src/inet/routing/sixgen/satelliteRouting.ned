@@ -19,7 +19,7 @@ import inet.applications.contract.IApp;
 simple satelliteRouting like IApp
 {
     parameters:
-        @class("satelliteRouting::SatelliteRouting");
+        @class("satelliterouting::SatelliteRouting");
         @display("i=block/network2");
         string routingTableModule = default("^.ipv4.routingTable");
         string interfaceTableModule = default("^.interfaceTable");

@@ -25,7 +25,7 @@ module satelliteNode extends WirelessHost{
         wlan[*].agent.typename = default("");
         forwarding = default(true);
 	submodules:
-		routing : satellilteRouting{
+		routing : satelliteRouting{
             @display("p=50,50");
         }
     connections:

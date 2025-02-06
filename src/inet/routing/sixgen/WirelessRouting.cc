@@ -3143,7 +3143,7 @@ void WirelessRouting::calculateDnnDecision(L3Address cainDest){
             dnnDist = calculateDnnDist(state, distMap->at(cainDest),rl_type);
         else
             dnnDist = calculateDnnDist(state, hopMap->at(cainDest),rl_type);
-        std::vector<bool> *decisionVect = network->calculateDnn(dnnDist, meanDelay.dbl()*pow(10,6),probPhero);
+        std::vector<bool> *decisionVect = network->calculateDnn(dnnDist, meanDelay.dbl()*pow(10,6));
         int decision;
 
         if(decisionVect->operator [](0)){//true
