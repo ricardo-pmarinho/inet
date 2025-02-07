@@ -16,6 +16,10 @@
 package inet.examples.sixgen;
 
 import inet.node.sixgen.sixgenNode;
+import inet.node.sixgen.droneNode;
+import inet.node.sixgen.satelliteNode;
+import inet.node.sixgen.antennaNode;
+
 import inet.common.scenario.ScenarioManager;
 import inet.networklayer.configurator.ipv4.Ipv4NetworkConfigurator;
 import inet.networklayer.ipv4.RoutingTableRecorder;
@@ -23,7 +27,6 @@ import inet.physicallayer.unitdisk.UnitDiskRadioMedium;
 import inet.visualizer.integrated.IntegratedVisualizer;
 import inet.common.oracle.Oracle;
 import inet.environment.common.PhysicalEnvironment;
-import inet.node.sixgen.droneNode;
 
 
 network simpleNetwork
@@ -41,15 +44,20 @@ network simpleNetwork
         int mlThreshold = default(300);
         double alphaRl = default(0.5);
     submodules:
-        satellite[numOfSats]: sixgenNode {
+        host[numHost]: sixgenNode {
+            parameters:
+                @display("p=429,269");
+        }
+        antenna[numAntenna]: antennaNode {
+            parameters:
+                @display("p=226,183;i=device/antennatower");
+        }
+        satellite[numOfSats]: satelliteNode {
             parameters:
                 @display("p=430,43;r=10,,#707070;i=device/satellite_l");
         }
-        //showcase: SpatialMobilityShowcase {
-        //    @display("p=100,381");
-        //}
         drone[numDrone]: droneNode {
-            @display("i=misc/drone");
+            @display("i=misc/drone;p=430,166");
         }
         physicalEnvironment: PhysicalEnvironment {
             @display("p=580,425");
@@ -62,10 +70,6 @@ network simpleNetwork
             parameters:
                 @display("p=100,30;is=s");
         }
-//        visualizer: IntegratedCanvasVisualizer {
-//            parameters:
-//                @display("p=100,30;is=s");
-//        }
         radioMedium: UnitDiskRadioMedium {
             parameters:
                 @display("p=99,128;is=s");
@@ -86,14 +90,6 @@ network simpleNetwork
             parameters:
                 script = default(xml("<scenario/>"));
                 @display("p=100,221;is=s");
-        }
-        host[numHost]: sixgenNode {
-            parameters:
-                @display("p=300,300");
-        }
-        antenna[numAntenna]: sixgenNode {
-            parameters:
-                @display("p=300,150");
         }
     connections allowunconnected:
 }
