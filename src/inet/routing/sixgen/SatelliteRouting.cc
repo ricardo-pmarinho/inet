@@ -119,6 +119,7 @@ void SatelliteRouting::initialize(int stage)
         routes = new map<pair<L3Address,L3Address>,pair<L3Address,int>>();
         revRoute = new map<pair<L3Address,L3Address>,L3Address>();
 
+        satelliteDistMap = new map<L3Address,double>();
         fwdAck = new vector<int>();
         reqAck = new vector<int>();
         hopAck = new vector<int>();
@@ -219,15 +220,9 @@ void SatelliteRouting::handleMessageWhenUp(cMessage *msg)
             expungeRoutes();
 
         else if (msg == counterTimer) {
-            scheduleAt(simTime() + 1, counterTimer);
-            timeCounter++;
-            if(timeCounter == 5){
-                timeCounter=0;
-                com_range=0;
-            }
-            if(lround(simTime().dbl())>=176){
-                //oracle_->shutDownSimulation();
-            }
+            auto snoopPkg = createSnoopMsg();
+            sendSnooping(snoopPkg, 1);
+            scheduleAt(simTime() + 5, counterTimer);
         }else if (msg == rrepAckTimer)
             handleRREPACKTimer();
         else if (msg == blacklistTimer)
@@ -557,12 +552,8 @@ const Ptr<SNOOPHB> SatelliteRouting::createSnoopMsg(){
     auto snoopPkg = makeShared<SNOOPHB>();
     Coord coord;
     int batteryPercent = 100;
-    //if(strcmp(this->getParentModule()->getName(),"drone")){//not a drone
-        coord = Coord(baseMobility->getCurrentPosition());
-        batteryPercent = (int)round(unit(energyStorage->getResidualEnergyCapacity()/energyStorage->getNominalEnergyCapacity()).get() * 100);
-    //}else
-        //coord = Coord(droneMobility->getCurrentPosition());
-    //Coord senderCoord = Coord(baseMobility->getCurrentPosition());
+    coord = Coord(baseMobility->getCurrentPosition());
+    batteryPercent = (int)round(unit(energyStorage->getResidualEnergyCapacity()/energyStorage->getNominalEnergyCapacity()).get() * 100);
     Coord senderCoord = coord;
     snoopPkg->setPacketType(usingIpv6 ? SNP_IPv6 : SNP);
     snoopPkg->setChunkLength(usingIpv6 ? B(48) : B(24));
@@ -922,41 +913,33 @@ void SatelliteRouting::handleDroneMsg(const Ptr<DRONEMSG>& droneMsg){
 
 }
 
-void SatelliteRouting::handleSnooping(const Ptr<SNOOPHB>& snoop, const L3Address& sourceAddr){
-    EV_INFO << "AODV Route Request arrived with source addr: " << sourceAddr << " originator addr: "
-            << snoop->getOriginatorAddr() << " destination addr: " << snoop->getDestAddr() << endl;
-    EV << "Sel Ip: " << getSelfIPAddress() << endl;
-    IRoute *previousHopRoute = routingTable->findBestMatchingRoute(sourceAddr);
+void SatelliteRouting::handleSnooping(const Ptr<SNOOPHB>& snoop, const L3Address& sourceAddr)
+{
+    if(strcmp(snoop->getNodeName(),"satellite")==0){
+        handleSatelliteSnooping(snoop);
+    }else if(strcmp(snoop->getNodeName(),"antenna")==0){
+        handleAntennaSnooping(snoop);
+    }else
+        return;
+}
 
-
+void SatelliteRouting::handleSatelliteSnooping(const Ptr<SNOOPHB> snoop)
+{
     Coord thisCoord = Coord(baseMobility->getCurrentPosition());
     Coord senderCoord = snoop->getMsgCoord();
     double dist = thisCoord.distance(senderCoord);
-    distMap->operator [](sourceAddr) = dist;
-    if(dist > com_range)
-        com_range = dist;
-
-    neighbMap->operator [](sourceAddr) = snoop->getBatteryPercent();
-    //sprayNwait
-    if (!previousHopRoute || previousHopRoute->getSource() != this) {
-        // create without valid sequence number
-        previousHopRoute = createRoute(sourceAddr, sourceAddr, 1, false, snoop->getOriginatorSeqNum(), true, simTime() + activeRouteTimeout);
-    }
-    else
-        updateRoutingTable(previousHopRoute, sourceAddr, 1, false, snoop->getOriginatorSeqNum(), true, simTime() + activeRouteTimeout);
-
-    neighborBattery->operator [](sourceAddr)=snoop->getBatteryPercent();
-
-    //calcPheromone(sourceAddr, snoop);
-//    updateChCandidate(sourceAddr, snoop->getBatteryPercent(),snoop->getMsgCoord());
-
-//    if (simTime() > rebootTime + deletePeriod || rebootTime == 0) {
-//        auto snoop = createSnoopMsg();
-//        sendSnooping(snoop, 2);
-//    }
+    satelliteDistMap->operator [](snoop->getOriginatorAddr()) = dist;
+    return;
 }
 
-void SatelliteRouting::calcDelayMean(simtime_t msgInit){
+void SatelliteRouting::handleAntennaSnooping(const Ptr<SNOOPHB> snoop)
+{
+    antennaAddr = snoop->getOriginatorAddr();
+    return;
+}
+
+void SatelliteRouting::calcDelayMean(simtime_t msgInit)
+{
     simtime_t timeDiff = simTime() - msgInit;
     meanDelay*=qtdMsg;
     meanDelay+=timeDiff;

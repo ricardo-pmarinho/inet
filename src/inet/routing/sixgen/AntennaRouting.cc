@@ -226,15 +226,9 @@ void AntennaRouting::handleMessageWhenUp(cMessage *msg)
             scheduleAt(simTime()+5, antennaTimer);
         }
         else if (msg == counterTimer) {
-            scheduleAt(simTime() + 1, counterTimer);
-            timeCounter++;
-            if(timeCounter == 5){
-                timeCounter=0;
-                com_range=0;
-            }
-            if(lround(simTime().dbl())>=176){
-                //oracle_->shutDownSimulation();
-            }
+            auto snoopPkg = createSnoopMsg();
+            sendSnooping(snoopPkg, 1);
+            scheduleAt(simTime() + 5, counterTimer);
         }else if(msg == endTimer){
             rreqCount = rerrCount = 0;
             scheduleAt(simTime() + 0.1, endTimer);
@@ -569,12 +563,8 @@ const Ptr<SNOOPHB> AntennaRouting::createSnoopMsg(){
     auto snoopPkg = makeShared<SNOOPHB>();
     Coord coord;
     int batteryPercent = 100;
-    //if(strcmp(this->getParentModule()->getName(),"drone")){//not a drone
-        coord = Coord(baseMobility->getCurrentPosition());
-        batteryPercent = (int)round(unit(energyStorage->getResidualEnergyCapacity()/energyStorage->getNominalEnergyCapacity()).get() * 100);
-    //}else
-        //coord = Coord(droneMobility->getCurrentPosition());
-    //Coord senderCoord = Coord(baseMobility->getCurrentPosition());
+    coord = Coord(baseMobility->getCurrentPosition());
+    batteryPercent = (int)round(unit(energyStorage->getResidualEnergyCapacity()/energyStorage->getNominalEnergyCapacity()).get() * 100);
     Coord senderCoord = coord;
     snoopPkg->setPacketType(usingIpv6 ? SNP_IPv6 : SNP);
     snoopPkg->setChunkLength(usingIpv6 ? B(48) : B(24));
@@ -839,12 +829,12 @@ void AntennaRouting::processPacket(Packet *packet)
     auto packetType = hbPacket->getPacketType();
 
     switch (packetType) {
-        case SNP:
-        case SNP_IPv6:
-            EV << "Snooping message arrived" << endl;
-            handleSnooping(CHK(dynamicPtrCast<SNOOPHB>(hbPacket->dupShared())), sourceAddr);
-            delete packet;
-            return;
+//        case SNP:
+//        case SNP_IPv6:
+//            EV << "Snooping message arrived" << endl;
+//            handleSnooping(CHK(dynamicPtrCast<SNOOPHB>(hbPacket->dupShared())), sourceAddr);
+//            delete packet;
+//            return;
         case CAINFWD:
         case CAINFWD_IPv6:
             EV << "CAIN FWD message arrived" << endl;

@@ -84,6 +84,8 @@ private:
     int higherNeighBattery = 0; //for the leach ch election process
     double neighDistMean = 0.0;
     std::vector<L3Address> *leachNeigh;
+    map<L3Address,double> *satelliteDistMap; //map for the RL algorithm: distance for drones when a host receives it and
+                                         //distance from satellite when drone receives it
 
     map<pair<L3Address,L3Address>,pair<L3Address,int>> *routes;//<<originator,destination>,<next_hop,battery>>
     map<pair<L3Address,L3Address>,L3Address> *revRoute;//<<originator,destination>,prev_hop>
@@ -259,13 +261,8 @@ private:
     void sendCainMsg(const Ptr<CAINMSG>& cainmsg, unsigned int timeToLive,double delay);
     void sendSprayMsg(const Ptr<CAINMSG>& cainMsg);
     const Ptr<Rerr> createRERR(const std::vector<UnreachableNode>& unreachableNodes);
-//    void sendRREPACK(const Ptr<RrepAck>& rrepACK, const L3Address& destAddr);
-//    void sendRREP(const Ptr<Rrep>& rrep, const L3Address& destAddr, unsigned int timeToLive);
-//    void sendGRREP(const Ptr<Rrep>& grrep, const L3Address& destAddr, unsigned int timeToLive);
-//
-//    /* Control Packet forwarders */
-//    void forwardRREP(const Ptr<Rrep>& rrep, const L3Address& destAddr, unsigned int timeToLive);
-//    void forwardRREQ(const Ptr<Rreq>& rreq, unsigned int timeToLive);
+    void handleSatelliteSnooping(const Ptr<SNOOPHB> snoop);
+    void handleAntennaSnooping(const Ptr<SNOOPHB> snoop);
 
     void calcDelayMean(simtime_t msgInit);
 //

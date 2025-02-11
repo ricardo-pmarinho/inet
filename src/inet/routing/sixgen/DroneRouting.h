@@ -397,42 +397,17 @@ private:
 //
     /* Control Packet handlers */
     void handleSnooping(const Ptr<SNOOPHB>& snoop, const L3Address& sourceAddr);
-    void handleLeachMsg(const Ptr<CHDEF>& leach);
-    void handleResp(const Ptr<RESPHB>& resp);
+    void handleDroneSnooping(const Ptr<SNOOPHB> snoop);
+    void handleSatelliteSnooping(const Ptr<SNOOPHB> snoop);
     void handleCainFWD(const Ptr<CAINMSG>& cainmsg);
-    void handleCainREQ(const Ptr<CAINMSG>& cainmsg);
-    void handleCainRESP(const Ptr<CAINMSG>& cainmsg);
-    void handleCainHOP(const Ptr<CAINMSG>& cainmsg);
-    void handleCainERR(const Ptr<CAINMSG>& cainmsg);
-    void handleCainACK(const Ptr<CAINMSG>& cainmsg);
-    void handleFwdTimer();
-    void handleCainRREQ(const Ptr<CAINMSG>& cainmsg);
-    void handleCainRREP(const Ptr<CAINMSG>& cainmsg);
-    void handleCainReply(const Ptr<CAINMSG>& cainmsg);
-    void handleCainHopCount(const Ptr<CAINMSG>& cainmsg);
-    void handleAntennaMsg(const Ptr<ANTENNA>& antennaMsg);
     void handleDroneMsg(const Ptr<DRONEMSG>& droneMsg);
-    void handleWeightMsg(const Ptr<FLWEIGHT>& antennaMsg);
-    void recLeachMsg(L3Address neighAddr, const Ptr<SNOOPHB>& snoop);
-    void calcPheromone(L3Address neighAddr, const Ptr<CAINMSG>& cainmsg);
-    void recLeachRespMsg(const Ptr<RESPHB>& respMsg);
-    void chDecision();
-    void resetLeachCalculation();
     void sendSnooping(const Ptr<SNOOPHB>& snoop, unsigned int timeToLive);
-    void sendResp(const Ptr<RESPHB>& resp, const L3Address& destAddr, unsigned int timeToLive);
     void sendCainMsg(const Ptr<CAINMSG>& cainmsg, unsigned int timeToLive,double delay);
-    void sendSprayMsg(const Ptr<CAINMSG>& cainMsg);
-//    void sendRREPACK(const Ptr<RrepAck>& rrepACK, const L3Address& destAddr);
-//    void sendRREP(const Ptr<Rrep>& rrep, const L3Address& destAddr, unsigned int timeToLive);
-//    void sendGRREP(const Ptr<Rrep>& grrep, const L3Address& destAddr, unsigned int timeToLive);
-//
 //    /* Control Packet forwarders */
 //    void forwardRREP(const Ptr<Rrep>& rrep, const L3Address& destAddr, unsigned int timeToLive);
 //    void forwardRREQ(const Ptr<Rreq>& rreq, unsigned int timeToLive);
 
     void updateBestHop(L3Address srcAddr);
-    void updateLarBestHop(L3Address srcAddr, Coord senderCoord);
-
     void calcDelayMean(simtime_t msgInit);
 //
     void updateConnectedDevs();

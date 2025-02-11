@@ -506,61 +506,6 @@ void DroneRouting::sendSnooping(const Ptr<SNOOPHB>& snoop, unsigned int timeToLi
     sendHeartBeatpkg(snoop,addressType->getBroadcastAddress(),timeToLive,0);
 }
 
-void DroneRouting::sendResp(const Ptr<RESPHB>& resp, const L3Address& destAddr, unsigned int timeToLive){
-    EV << "sending response message" << endl;
-    EV << "Destination: " << resp->getDestAddr() << endl;
-    EV << "Source: " << resp->getOriginatorAddr() << endl;
-//    sendHeartBeatpkg(resp,destAddr,timeToLive,currBackoff);
-    sendHeartBeatpkg(resp,destAddr,timeToLive,0);
-}
-
-void DroneRouting::sendCainMsg(const Ptr<CAINMSG>& cainmsg, unsigned int timeToLive, double delay){
-    EV << "sending CAIN ";
-    int type = cainmsg->getPacketType();
-    switch(type){
-    case CAINREQ:
-    case CAINREQ_IPv6:
-        EV << "REQ ";
-        break;
-    case CAINRESP:
-    case CAINRESP_IPv6:
-        EV << "RESP ";
-        break;
-    case CAINFWD:
-    case CAINFWD_IPv6:
-        EV << "FWD ";
-        break;
-    case NEWFWD:
-    case NEWFWD_IPv6:
-        EV << "NEW FDW ";
-        break;
-    case CAINHOP:
-    case CAINHOP_IPv6:
-        EV << "HOP ";
-        break;
-    case CAINERR:
-    case CAINERR_IPv6:
-        EV << "ERR ";
-        break;
-    case LAR:
-    case LAR_IPv6:
-        EV << "LAR ";
-        break;
-    case SPR:
-    case SPR_IPv6:
-        EV << "SPRAY ";
-        break;
-    case BRAP:
-    case BRAP_IPv6:
-        EV << "BRAP ";
-        break;
-    }
-    EV << "message." << endl;
-
-//    if(!cainmsg->getDestAddr().isUnspecified())
-        sendHeartBeatpkg(cainmsg,addressType->getBroadcastAddress(),timeToLive,delay);
-}
-
 void DroneRouting::sendHeartBeatpkg(const Ptr<HeartBeat>& hbpacket, const L3Address& destAddr, unsigned int timeToLive, double delay){
     ASSERT(timeToLive != 0);
     EV << "sending hb message" << endl;
@@ -610,17 +555,6 @@ const Ptr<SNOOPHB> DroneRouting::createSnoopMsg()
     return snoopPkg;
 }
 
-
-const Ptr<CHDEF> DroneRouting::createChDefMsg(){
-    auto chDef = makeShared<CHDEF>();
-    int batteryPercent = (int)round(unit(energyStorage->getResidualEnergyCapacity()/energyStorage->getNominalEnergyCapacity()).get() * 100);
-    chDef->setPacketType(usingIpv6 ? LEACH : LEACH_IPv6);
-    chDef->setChunkLength(usingIpv6 ? B(48) : B(24));
-    chDef->setSourceAddr(getSelfIPAddress());
-    chDef->setSenderCoord(baseMobility->getCurrentPosition());
-    return chDef;
-}
-
 const Ptr<DRONEMSG> DroneRouting::createDroneMsg(){
     auto droneMsg = makeShared<DRONEMSG>();
     droneMsg->setPacketType(usingIpv6 ? DRONE_IPv6: DRONE);
@@ -632,6 +566,82 @@ const Ptr<DRONEMSG> DroneRouting::createDroneMsg(){
     return droneMsg;
 }
 
+
+
+void DroneRouting::handleSnooping(const Ptr<SNOOPHB>& snoop, const L3Address& sourceAddr)
+{
+    if(strcmp(snoop->getNodeName(),"drone")==0){
+        handleDroneSnooping(snoop);
+    }else if(strcmp(snoop->getNodeName(),"satellite")==0){
+        handleSatelliteSnooping(snoop);
+    }else
+        return;
+}
+
+void DroneRouting::handleDroneSnooping(const Ptr<SNOOPHB> snoop)
+{
+    Coord thisCoord = Coord(baseMobility->getCurrentPosition());
+    Coord senderCoord = snoop->getMsgCoord();
+    double dist = thisCoord.distance(senderCoord);
+    droneDistMap->operator [](snoop->getOriginatorAddr()) = dist;
+    return;
+}
+
+void DroneRouting::handleSatelliteSnooping(const Ptr<SNOOPHB> snoop)
+{
+    satelliteAddr = snoop->getOriginatorAddr();
+    return;
+}
+
+void DroneRouting::sendCainMsg(const Ptr<CAINMSG>& cainmsg, unsigned int timeToLive, double delay){
+    EV << "sending CAIN ";
+    int type = cainmsg->getPacketType();
+    switch(type){
+    case CAINREQ:
+    case CAINREQ_IPv6:
+        EV << "REQ ";
+        break;
+    case CAINRESP:
+    case CAINRESP_IPv6:
+        EV << "RESP ";
+        break;
+    case CAINFWD:
+    case CAINFWD_IPv6:
+        EV << "FWD ";
+        break;
+    case NEWFWD:
+    case NEWFWD_IPv6:
+        EV << "NEW FDW ";
+        break;
+    case CAINHOP:
+    case CAINHOP_IPv6:
+        EV << "HOP ";
+        break;
+    case CAINERR:
+    case CAINERR_IPv6:
+        EV << "ERR ";
+        break;
+    case CAINACK:
+    case CAINACK_IPv6:
+        EV << "ACK ";
+        break;
+    case LAR:
+    case LAR_IPv6:
+        EV << "LAR ";
+        break;
+    case SPR:
+    case SPR_IPv6:
+        EV << "SPRAY ";
+        break;
+    case BRAP:
+    case BRAP_IPv6:
+        EV << "BRAP ";
+        break;
+    }
+    EV << "message." << endl;
+
+    sendHeartBeatpkg(cainmsg,addressType->getBroadcastAddress(),timeToLive,delay);
+}
 
 bool DroneRouting::hasOngoingRouteDiscovery(const L3Address& target)
 {
@@ -873,6 +883,12 @@ void DroneRouting::processPacket(Packet *packet)
     auto packetType = hbPacket->getPacketType();
 
     switch (packetType) {
+        case SNP:
+        case SNP_IPv6:
+            EV << "Snooping message arrived" << endl;
+            handleSnooping(CHK(dynamicPtrCast<SNOOPHB>(hbPacket->dupShared())), sourceAddr);
+            delete packet;
+            return;
         case CAINFWD:
         case CAINFWD_IPv6:
             EV << "CAIN FWD message arrived" << endl;
@@ -921,9 +937,6 @@ void DroneRouting::handleStartOperation(LifecycleOperation *operation)
     if (useHelloMessages)
         scheduleAt(simTime() + helloInterval - *periodicJitter, helloMsgTimer);
     scheduleAt(simTime() + 2, counterTimer);
-    //scheduleAt(simTime()+1,droneTimer);
-
-    //    scheduleAt(simTime()+0.7, cainFwdTimer);
 }
 
 void DroneRouting::handleCainFWD(const Ptr<CAINMSG>& cainmsg){
@@ -976,13 +989,6 @@ void DroneRouting::calcDelayMean(simtime_t msgInit){
 
 }
 
-void DroneRouting::handleAntennaMsg(const Ptr<ANTENNA>& antennaMsg){
-    EV << "antenna message arriving with address: " << antennaMsg->getSourceAddr() << endl;
-    //it is a regular node: the strcmp returns 1
-    antennaAddr = antennaMsg->getSourceAddr();
-    recAntennaMsg++;
-    emit(recAntennaMsgSignal,recAntennaMsg);
-}
 
 void DroneRouting::handleDroneMsg(const Ptr<DRONEMSG>& droneMsg){
     EV << "Drone message arriving with address: " << droneMsg->getSourceAddr() << endl;
@@ -993,26 +999,6 @@ void DroneRouting::handleDroneMsg(const Ptr<DRONEMSG>& droneMsg){
     double dist = thisCoord.distance(senderCoord);
     droneDistMap->operator [](droneMsg->getSourceAddr()) = dist;
 }
-
-void DroneRouting::handleCainRESP(const Ptr<CAINMSG>& cainmsg){
-    EV << "Destined to: " << cainmsg->getDestAddr() << ", initiated by: " << cainmsg->getOriginatorAddr() <<
-                ", sent by: " << cainmsg->getSourceAddr() << endl;
-    EV << "Self ipAddr: " << getSelfIPAddress() << endl;
-    std::pair<L3Address,int> msgSource = std::pair<L3Address,int>(cainmsg->getSourceAddr(),
-            cainmsg->getBatteryPercent());
-
-
-//    if(recFwdMessages->find(cainmsg->getOriginatorAddr()) == recFwdMessages->end()){
-//        recFwdMessages->operator [](cainmsg->getOriginatorAddr())=cainmsg->getMsgId();
-
-    calcDelayMean(cainmsg->getTimeInit());
-        recCainRespMsg++;
-        emit(recCainRespMsgSignal,recCainRespMsg);
-        respMap->operator [](msgSource) = pair<L3Address,int>(cainmsg->getChAddr(),cainmsg->getChBattery());
-        centralityMap->operator [](cainmsg->getSourceAddr()) = cainmsg->getCentrality();
-//    }
-}
-
 void DroneRouting::updateRoutingTable(IRoute *route, const L3Address& nextHop, unsigned int hopCount, bool hasValidDestNum, unsigned int destSeqNum, bool isActive, simtime_t lifeTime)
 {
     EV_DETAIL << "Updating existing route: " << route << endl;
@@ -1033,36 +1019,6 @@ void DroneRouting::updateRoutingTable(IRoute *route, const L3Address& nextHop, u
     scheduleExpungeRoutes();
 }
 
-
-/*void DroneRouting::recLeachRespMsg(const Ptr<RESPHB>& respMsg){
-    //when the message has the two hop information
-    int neighBattery = respMsg->getBatteryPercent();
-    Coord senderCoord = respMsg->getSenderCoord();
-    Coord devCoord = baseMobility->getCurrentPosition();
-    double dist = devCoord.distance(senderCoord);
-    L3Address neighAddr = respMsg->getSourceAddr();
-    if(std::find(this->leachNeigh->begin(),this->leachNeigh->end(),neighAddr) == this->leachNeigh->end()){
-        int neighNum = leachNeigh->size();
-        leachNeigh->push_back(neighAddr);
-        neighBatteryMean*=neighNum;
-        neighBatteryMean+=neighBattery;
-        neighBatteryMean/=(neighNum+1);
-        if(neighBattery > higherNeighBattery)
-            higherNeighBattery = neighBattery;
-        neighDistMean*=neighNum;
-        neighDistMean+=dist*0.02;
-        neighDistMean/=(neighNum+1);
-        phero = getDevBatteryPower()/neighDistMean;
-    }
-}*/
-
-
-void DroneRouting::resetLeachCalculation(){
-    delete(this->leachNeigh);
-    this->leachNeigh = new std::vector<L3Address>();
-    neighBatteryMean = 0.0;
-    higherNeighBattery=0.0;
-}
 
 IRoute *DroneRouting::createRoute(const L3Address& destAddr, const L3Address& nextHop,
         unsigned int hopCount, bool hasValidDestNum, unsigned int destSeqNum,
