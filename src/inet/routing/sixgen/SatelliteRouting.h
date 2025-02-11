@@ -245,6 +245,7 @@ private:
 //    /* Control packet creators */
     const Ptr<SNOOPHB> createSnoopMsg();
     const Ptr<SNOOPHB> createHelloMessage();
+    const Ptr<SATMSG> createSatMsg();
 //
     /* Control Packet handlers */
     void handleSnooping(const Ptr<SNOOPHB>& snoop, const L3Address& sourceAddr);

@@ -576,6 +576,18 @@ const Ptr<SNOOPHB> SatelliteRouting::createSnoopMsg(){
     return snoopPkg;
 }
 
+const Ptr<SATMSG> SatelliteRouting::createSatMsg()
+{
+    auto satMsg = makeShared<SATMSG>();
+    satMsg->setPacketType(usingIpv6 ? SAT_IPv6: SAT);
+    satMsg->setChunkLength(usingIpv6 ? B(48) : B(24));
+    satMsg->setDestAddr(addressType->getBroadcastAddress());
+    satMsg->setSourceAddr(getSelfIPAddress());
+    satMsg->setSenderCoord(baseMobility->getCurrentPosition());
+    satMsg->setHopCount(1);
+    return satMsg;
+}
+
 bool SatelliteRouting::hasOngoingRouteDiscovery(const L3Address& target)
 {
     return waitForRREPTimers.find(target) != waitForRREPTimers.end();
@@ -938,10 +950,10 @@ void SatelliteRouting::handleSnooping(const Ptr<SNOOPHB>& snoop, const L3Address
     //calcPheromone(sourceAddr, snoop);
 //    updateChCandidate(sourceAddr, snoop->getBatteryPercent(),snoop->getMsgCoord());
 
-    if (simTime() > rebootTime + deletePeriod || rebootTime == 0) {
-        auto snoop = createSnoopMsg();
-        sendSnooping(snoop, 2);
-    }
+//    if (simTime() > rebootTime + deletePeriod || rebootTime == 0) {
+//        auto snoop = createSnoopMsg();
+//        sendSnooping(snoop, 2);
+//    }
 }
 
 void SatelliteRouting::calcDelayMean(simtime_t msgInit){

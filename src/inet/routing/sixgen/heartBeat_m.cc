@@ -232,6 +232,7 @@ EXECUTE_ON_STARTUP(
     e->insert(WGHT, "WGHT");
     e->insert(LEACH, "LEACH");
     e->insert(DRONE, "DRONE");
+    e->insert(SAT, "SAT");
     e->insert(SNP_IPv6, "SNP_IPv6");
     e->insert(RESP_IPv6, "RESP_IPv6");
     e->insert(CAINREQ_IPv6, "CAINREQ_IPv6");
@@ -253,6 +254,7 @@ EXECUTE_ON_STARTUP(
     e->insert(WGHT_IPv6, "WGHT_IPv6");
     e->insert(LEACH_IPv6, "LEACH_IPv6");
     e->insert(DRONE_IPv6, "DRONE_IPv6");
+    e->insert(SAT_IPv6, "SAT_IPv6");
     e->insert(def, "def");
 )
 
@@ -2103,6 +2105,353 @@ void *DRONEMSGDescriptor::getFieldStructValuePointer(void *object, int field, in
         field -= basedesc->getFieldCount();
     }
     DRONEMSG *pp = (DRONEMSG *)object; (void)pp;
+    switch (field) {
+        case FIELD_destAddr: return toVoidPtr(&pp->getDestAddr()); break;
+        case FIELD_sourceAddr: return toVoidPtr(&pp->getSourceAddr()); break;
+        case FIELD_senderCoord: return toVoidPtr(&pp->getSenderCoord()); break;
+        default: return nullptr;
+    }
+}
+
+Register_Class(SATMSG)
+
+SATMSG::SATMSG() : ::inet::wirelessrouting::HeartBeat()
+{
+}
+
+SATMSG::SATMSG(const SATMSG& other) : ::inet::wirelessrouting::HeartBeat(other)
+{
+    copy(other);
+}
+
+SATMSG::~SATMSG()
+{
+}
+
+SATMSG& SATMSG::operator=(const SATMSG& other)
+{
+    if (this == &other) return *this;
+    ::inet::wirelessrouting::HeartBeat::operator=(other);
+    copy(other);
+    return *this;
+}
+
+void SATMSG::copy(const SATMSG& other)
+{
+    this->hopCount = other.hopCount;
+    this->destAddr = other.destAddr;
+    this->sourceAddr = other.sourceAddr;
+    this->senderCoord = other.senderCoord;
+}
+
+void SATMSG::parsimPack(omnetpp::cCommBuffer *b) const
+{
+    ::inet::wirelessrouting::HeartBeat::parsimPack(b);
+    doParsimPacking(b,this->hopCount);
+    doParsimPacking(b,this->destAddr);
+    doParsimPacking(b,this->sourceAddr);
+    doParsimPacking(b,this->senderCoord);
+}
+
+void SATMSG::parsimUnpack(omnetpp::cCommBuffer *b)
+{
+    ::inet::wirelessrouting::HeartBeat::parsimUnpack(b);
+    doParsimUnpacking(b,this->hopCount);
+    doParsimUnpacking(b,this->destAddr);
+    doParsimUnpacking(b,this->sourceAddr);
+    doParsimUnpacking(b,this->senderCoord);
+}
+
+unsigned int SATMSG::getHopCount() const
+{
+    return this->hopCount;
+}
+
+void SATMSG::setHopCount(unsigned int hopCount)
+{
+    handleChange();
+    this->hopCount = hopCount;
+}
+
+const L3Address& SATMSG::getDestAddr() const
+{
+    return this->destAddr;
+}
+
+void SATMSG::setDestAddr(const L3Address& destAddr)
+{
+    handleChange();
+    this->destAddr = destAddr;
+}
+
+const L3Address& SATMSG::getSourceAddr() const
+{
+    return this->sourceAddr;
+}
+
+void SATMSG::setSourceAddr(const L3Address& sourceAddr)
+{
+    handleChange();
+    this->sourceAddr = sourceAddr;
+}
+
+const Coord& SATMSG::getSenderCoord() const
+{
+    return this->senderCoord;
+}
+
+void SATMSG::setSenderCoord(const Coord& senderCoord)
+{
+    handleChange();
+    this->senderCoord = senderCoord;
+}
+
+class SATMSGDescriptor : public omnetpp::cClassDescriptor
+{
+  private:
+    mutable const char **propertynames;
+    enum FieldConstants {
+        FIELD_hopCount,
+        FIELD_destAddr,
+        FIELD_sourceAddr,
+        FIELD_senderCoord,
+    };
+  public:
+    SATMSGDescriptor();
+    virtual ~SATMSGDescriptor();
+
+    virtual bool doesSupport(omnetpp::cObject *obj) const override;
+    virtual const char **getPropertyNames() const override;
+    virtual const char *getProperty(const char *propertyname) const override;
+    virtual int getFieldCount() const override;
+    virtual const char *getFieldName(int field) const override;
+    virtual int findField(const char *fieldName) const override;
+    virtual unsigned int getFieldTypeFlags(int field) const override;
+    virtual const char *getFieldTypeString(int field) const override;
+    virtual const char **getFieldPropertyNames(int field) const override;
+    virtual const char *getFieldProperty(int field, const char *propertyname) const override;
+    virtual int getFieldArraySize(void *object, int field) const override;
+
+    virtual const char *getFieldDynamicTypeString(void *object, int field, int i) const override;
+    virtual std::string getFieldValueAsString(void *object, int field, int i) const override;
+    virtual bool setFieldValueAsString(void *object, int field, int i, const char *value) const override;
+
+    virtual const char *getFieldStructName(int field) const override;
+    virtual void *getFieldStructValuePointer(void *object, int field, int i) const override;
+};
+
+Register_ClassDescriptor(SATMSGDescriptor)
+
+SATMSGDescriptor::SATMSGDescriptor() : omnetpp::cClassDescriptor(omnetpp::opp_typename(typeid(inet::wirelessrouting::SATMSG)), "inet::wirelessrouting::HeartBeat")
+{
+    propertynames = nullptr;
+}
+
+SATMSGDescriptor::~SATMSGDescriptor()
+{
+    delete[] propertynames;
+}
+
+bool SATMSGDescriptor::doesSupport(omnetpp::cObject *obj) const
+{
+    return dynamic_cast<SATMSG *>(obj)!=nullptr;
+}
+
+const char **SATMSGDescriptor::getPropertyNames() const
+{
+    if (!propertynames) {
+        static const char *names[] = {  nullptr };
+        omnetpp::cClassDescriptor *basedesc = getBaseClassDescriptor();
+        const char **basenames = basedesc ? basedesc->getPropertyNames() : nullptr;
+        propertynames = mergeLists(basenames, names);
+    }
+    return propertynames;
+}
+
+const char *SATMSGDescriptor::getProperty(const char *propertyname) const
+{
+    omnetpp::cClassDescriptor *basedesc = getBaseClassDescriptor();
+    return basedesc ? basedesc->getProperty(propertyname) : nullptr;
+}
+
+int SATMSGDescriptor::getFieldCount() const
+{
+    omnetpp::cClassDescriptor *basedesc = getBaseClassDescriptor();
+    return basedesc ? 4+basedesc->getFieldCount() : 4;
+}
+
+unsigned int SATMSGDescriptor::getFieldTypeFlags(int field) const
+{
+    omnetpp::cClassDescriptor *basedesc = getBaseClassDescriptor();
+    if (basedesc) {
+        if (field < basedesc->getFieldCount())
+            return basedesc->getFieldTypeFlags(field);
+        field -= basedesc->getFieldCount();
+    }
+    static unsigned int fieldTypeFlags[] = {
+        FD_ISEDITABLE,    // FIELD_hopCount
+        0,    // FIELD_destAddr
+        0,    // FIELD_sourceAddr
+        FD_ISCOMPOUND,    // FIELD_senderCoord
+    };
+    return (field >= 0 && field < 4) ? fieldTypeFlags[field] : 0;
+}
+
+const char *SATMSGDescriptor::getFieldName(int field) const
+{
+    omnetpp::cClassDescriptor *basedesc = getBaseClassDescriptor();
+    if (basedesc) {
+        if (field < basedesc->getFieldCount())
+            return basedesc->getFieldName(field);
+        field -= basedesc->getFieldCount();
+    }
+    static const char *fieldNames[] = {
+        "hopCount",
+        "destAddr",
+        "sourceAddr",
+        "senderCoord",
+    };
+    return (field >= 0 && field < 4) ? fieldNames[field] : nullptr;
+}
+
+int SATMSGDescriptor::findField(const char *fieldName) const
+{
+    omnetpp::cClassDescriptor *basedesc = getBaseClassDescriptor();
+    int base = basedesc ? basedesc->getFieldCount() : 0;
+    if (fieldName[0] == 'h' && strcmp(fieldName, "hopCount") == 0) return base+0;
+    if (fieldName[0] == 'd' && strcmp(fieldName, "destAddr") == 0) return base+1;
+    if (fieldName[0] == 's' && strcmp(fieldName, "sourceAddr") == 0) return base+2;
+    if (fieldName[0] == 's' && strcmp(fieldName, "senderCoord") == 0) return base+3;
+    return basedesc ? basedesc->findField(fieldName) : -1;
+}
+
+const char *SATMSGDescriptor::getFieldTypeString(int field) const
+{
+    omnetpp::cClassDescriptor *basedesc = getBaseClassDescriptor();
+    if (basedesc) {
+        if (field < basedesc->getFieldCount())
+            return basedesc->getFieldTypeString(field);
+        field -= basedesc->getFieldCount();
+    }
+    static const char *fieldTypeStrings[] = {
+        "unsigned int",    // FIELD_hopCount
+        "inet::L3Address",    // FIELD_destAddr
+        "inet::L3Address",    // FIELD_sourceAddr
+        "inet::Coord",    // FIELD_senderCoord
+    };
+    return (field >= 0 && field < 4) ? fieldTypeStrings[field] : nullptr;
+}
+
+const char **SATMSGDescriptor::getFieldPropertyNames(int field) const
+{
+    omnetpp::cClassDescriptor *basedesc = getBaseClassDescriptor();
+    if (basedesc) {
+        if (field < basedesc->getFieldCount())
+            return basedesc->getFieldPropertyNames(field);
+        field -= basedesc->getFieldCount();
+    }
+    switch (field) {
+        default: return nullptr;
+    }
+}
+
+const char *SATMSGDescriptor::getFieldProperty(int field, const char *propertyname) const
+{
+    omnetpp::cClassDescriptor *basedesc = getBaseClassDescriptor();
+    if (basedesc) {
+        if (field < basedesc->getFieldCount())
+            return basedesc->getFieldProperty(field, propertyname);
+        field -= basedesc->getFieldCount();
+    }
+    switch (field) {
+        default: return nullptr;
+    }
+}
+
+int SATMSGDescriptor::getFieldArraySize(void *object, int field) const
+{
+    omnetpp::cClassDescriptor *basedesc = getBaseClassDescriptor();
+    if (basedesc) {
+        if (field < basedesc->getFieldCount())
+            return basedesc->getFieldArraySize(object, field);
+        field -= basedesc->getFieldCount();
+    }
+    SATMSG *pp = (SATMSG *)object; (void)pp;
+    switch (field) {
+        default: return 0;
+    }
+}
+
+const char *SATMSGDescriptor::getFieldDynamicTypeString(void *object, int field, int i) const
+{
+    omnetpp::cClassDescriptor *basedesc = getBaseClassDescriptor();
+    if (basedesc) {
+        if (field < basedesc->getFieldCount())
+            return basedesc->getFieldDynamicTypeString(object,field,i);
+        field -= basedesc->getFieldCount();
+    }
+    SATMSG *pp = (SATMSG *)object; (void)pp;
+    switch (field) {
+        default: return nullptr;
+    }
+}
+
+std::string SATMSGDescriptor::getFieldValueAsString(void *object, int field, int i) const
+{
+    omnetpp::cClassDescriptor *basedesc = getBaseClassDescriptor();
+    if (basedesc) {
+        if (field < basedesc->getFieldCount())
+            return basedesc->getFieldValueAsString(object,field,i);
+        field -= basedesc->getFieldCount();
+    }
+    SATMSG *pp = (SATMSG *)object; (void)pp;
+    switch (field) {
+        case FIELD_hopCount: return ulong2string(pp->getHopCount());
+        case FIELD_destAddr: return pp->getDestAddr().str();
+        case FIELD_sourceAddr: return pp->getSourceAddr().str();
+        case FIELD_senderCoord: {std::stringstream out; out << pp->getSenderCoord(); return out.str();}
+        default: return "";
+    }
+}
+
+bool SATMSGDescriptor::setFieldValueAsString(void *object, int field, int i, const char *value) const
+{
+    omnetpp::cClassDescriptor *basedesc = getBaseClassDescriptor();
+    if (basedesc) {
+        if (field < basedesc->getFieldCount())
+            return basedesc->setFieldValueAsString(object,field,i,value);
+        field -= basedesc->getFieldCount();
+    }
+    SATMSG *pp = (SATMSG *)object; (void)pp;
+    switch (field) {
+        case FIELD_hopCount: pp->setHopCount(string2ulong(value)); return true;
+        default: return false;
+    }
+}
+
+const char *SATMSGDescriptor::getFieldStructName(int field) const
+{
+    omnetpp::cClassDescriptor *basedesc = getBaseClassDescriptor();
+    if (basedesc) {
+        if (field < basedesc->getFieldCount())
+            return basedesc->getFieldStructName(field);
+        field -= basedesc->getFieldCount();
+    }
+    switch (field) {
+        case FIELD_senderCoord: return omnetpp::opp_typename(typeid(Coord));
+        default: return nullptr;
+    };
+}
+
+void *SATMSGDescriptor::getFieldStructValuePointer(void *object, int field, int i) const
+{
+    omnetpp::cClassDescriptor *basedesc = getBaseClassDescriptor();
+    if (basedesc) {
+        if (field < basedesc->getFieldCount())
+            return basedesc->getFieldStructValuePointer(object, field, i);
+        field -= basedesc->getFieldCount();
+    }
+    SATMSG *pp = (SATMSG *)object; (void)pp;
     switch (field) {
         case FIELD_destAddr: return toVoidPtr(&pp->getDestAddr()); break;
         case FIELD_sourceAddr: return toVoidPtr(&pp->getSourceAddr()); break;

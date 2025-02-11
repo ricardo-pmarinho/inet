@@ -106,6 +106,7 @@ void WirelessRouting::initialize(int stage)
         leachChDecision = new cMessage("leachChDecision");
         if (useHelloMessages)
             helloMsgTimer = new cMessage("HelloMsgTimer");
+        snoopTimer = new cMessage("SnoopMessage");
 
         cainMsgSignal = registerSignal("cainMsgSignal");
         connectedDevsSignal = registerSignal("connectedDevsSignal");
@@ -333,23 +334,7 @@ void WirelessRouting::handleMessageWhenUp(cMessage *msg)
             scheduleAt(simTime()+5, droneTimer);
         }
         else if (msg == counterTimer) {
-            scheduleAt(simTime() + 1, counterTimer);
             this->phero*=0.9;
-            /*if(this->chAddr == getSelfIPAddress() && getDevBatteryPower() < batteryThresh){
-                bool backoffEnabled = getModuleByPath("simpleNetwork")->par("backoffEnabled");
-                std::string netType = getModuleByPath("simpleNetwork")->par("networkType");
-                if(netType == "CAIN"){
-                    if(backoffEnabled){
-                        if(chInfo->isScheduled())
-                            cancelEvent(chInfo);
-                        double backoff = backoffTimer();
-                        scheduleAt(simTime()+backoff, chInfo);
-                    }else
-                        scheduleAt(simTime(), chInfo);
-                }else*/
-            if(chInfo->isScheduled())
-                cancelEvent(chInfo);
-            scheduleAt(simTime()+1, chInfo);
             //}
             this->phero = getDevBatteryPower()/neighDistMean;
             timeCounter++;
@@ -358,9 +343,7 @@ void WirelessRouting::handleMessageWhenUp(cMessage *msg)
                 com_range=0;
                 hop_range=0;
             }
-            if(lround(simTime().dbl())>=176){
-                //oracle_->shutDownSimulation();
-            }
+            scheduleAt(simTime() + 1, counterTimer);
         }else if(msg == sendFlAvgWeights){
 
             std::vector<float> *weights = network->getTotalWeights();
@@ -385,9 +368,11 @@ void WirelessRouting::handleMessageWhenUp(cMessage *msg)
             chDecision();
             scheduleAt(simTime()+5, leachChDecision);
         }else if(msg == chInfo){
-            //if(strcmp(this->getParentModule()->getName(),"host")){//a host
-                auto snoopPkg = createSnoopMsg();
-                sendSnooping(snoopPkg, 1);
+            auto snoopPkg = createSnoopMsg();
+            sendSnooping(snoopPkg, 1);
+            if(chInfo->isScheduled())
+                cancelEvent(chInfo);
+            scheduleAt(simTime()+5, chInfo);
             //}
         }else if(msg == endTimer){
             batteryDecay = getDevBatteryPower();
@@ -890,12 +875,8 @@ const Ptr<SNOOPHB> WirelessRouting::createSnoopMsg(){
     auto snoopPkg = makeShared<SNOOPHB>();
     Coord coord;
     int batteryPercent = 100;
-    //if(strcmp(this->getParentModule()->getName(),"drone")){//not a drone
-        coord = Coord(baseMobility->getCurrentPosition());
-        batteryPercent = (int)round(unit(energyStorage->getResidualEnergyCapacity()/energyStorage->getNominalEnergyCapacity()).get() * 100);
-    //}else
-        //coord = Coord(droneMobility->getCurrentPosition());
-    //Coord senderCoord = Coord(baseMobility->getCurrentPosition());
+    coord = Coord(baseMobility->getCurrentPosition());
+    batteryPercent = (int)round(unit(energyStorage->getResidualEnergyCapacity()/energyStorage->getNominalEnergyCapacity()).get() * 100);
     Coord senderCoord = coord;
     snoopPkg->setPacketType(usingIpv6 ? SNP_IPv6 : SNP);
     snoopPkg->setChunkLength(usingIpv6 ? B(48) : B(24));
@@ -1789,17 +1770,24 @@ void WirelessRouting::handleStartOperation(LifecycleOperation *operation)
     }
 }
 
-void WirelessRouting::handleSnooping(const Ptr<SNOOPHB>& snoop, const L3Address& sourceAddr){
+void WirelessRouting::handleSnooping(const Ptr<SNOOPHB>& snoop, const L3Address& sourceAddr)
+{
+    if(strcmp(snoop->getNodeName(),"host")==0){
+        handleHostSnooping(snoop);
+    }else if(strcmp(snoop->getNodeName(),"drone")==0){
+        handleDroneSnooping(snoop);
+    }else
+        return;
+}
+
+
+void WirelessRouting::handleHostSnooping(const Ptr<SNOOPHB> snoop)
+{
+    L3Address sourceAddr = snoop->getOriginatorAddr();
     EV_INFO << "AODV Route Request arrived with source addr: " << sourceAddr << " originator addr: "
             << snoop->getOriginatorAddr() << " destination addr: " << snoop->getDestAddr() << endl;
     EV << "Sel Ip: " << getSelfIPAddress() << endl;
     IRoute *previousHopRoute = routingTable->findBestMatchingRoute(sourceAddr);
-
-    if(!strcmp(this->getParentModule()->getName(),"drone") &&
-            !strcmp(snoop->getNodeName(),"satellite")){
-        EV << "Drone receiving a satellite snoop" << endl;
-        satelliteAddr = snoop->getOriginatorAddr();
-    }
 
     Coord thisCoord = Coord(baseMobility->getCurrentPosition());
     Coord senderCoord = snoop->getMsgCoord();
@@ -1823,21 +1811,32 @@ void WirelessRouting::handleSnooping(const Ptr<SNOOPHB>& snoop, const L3Address&
     neighborBattery->operator [](sourceAddr)=snoop->getBatteryPercent();
 
     recLeachMsg(sourceAddr, snoop);
-    //calcPheromone(sourceAddr, snoop);
-//    updateChCandidate(sourceAddr, snoop->getBatteryPercent(),snoop->getMsgCoord());
 
     if (simTime() > rebootTime + deletePeriod || rebootTime == 0) {
-        if(sourceAddr == chAddr){
-            //when CH battery is lower than the threshold, start CH election again
-            //if(strcmp(this->getParentModule()->getName(),"drone")){//not a drone
-                auto snoop = createSnoopMsg();
-                sendSnooping(snoop, 2);
-            //}
-        }else{
+//        if(sourceAddr == chAddr){
+//            //when CH battery is lower than the threshold, start CH election again
+//            //if(strcmp(this->getParentModule()->getName(),"drone")){//not a drone
+//                auto snoop = createSnoopMsg();
+//                sendSnooping(snoop, 2);
+//            //}
+//        }else{
+        if(sourceAddr != chAddr){
             auto resp = createRespHBMsg(sourceAddr);
             sendResp(resp, addressType->getBroadcastAddress(), 1);
         }
     }
+
+}
+
+void WirelessRouting::handleDroneSnooping(const Ptr<SNOOPHB> snoop)
+{
+    EV << "Drone message arriving with address: " << snoop->getOriginatorAddr() << endl;
+    EV << "This addr: " << getSelfIPAddress() << endl;
+    Coord thisCoord = Coord(baseMobility->getCurrentPosition());
+    Coord senderCoord = snoop->getMsgCoord();
+    double dist = thisCoord.distance(senderCoord);
+    droneAddr = snoop->getOriginatorAddr();
+    droneDistMap->operator [](droneAddr) = dist;
 }
 
 void WirelessRouting::handleLeachMsg(const Ptr<CHDEF>& leach){
@@ -1906,17 +1905,6 @@ void WirelessRouting::handleCainFWD(const Ptr<CAINMSG>& cainmsg){
     cainmsg->setHops(++hops);
 
     if(getSelfIPAddress() == chAddr && cainmsg->getCainDestAddr() == getSelfIPAddress()){
-
-        EV << "Antenna address: " << antennaAddr << endl;
-        if(!antennaAddr.isUnspecified()){
-            cainmsg->setSourceAddr(getSelfIPAddress());
-            cainmsg->setDestAddr(addressType->getBroadcastAddress());
-            cainmsg->setCainDestAddr(antennaAddr);
-            int hopcount=cainmsg->getHopCount();
-            cainmsg->setHopCount(--hopcount);
-            EV << "antenna address: " << antennaAddr << endl;
-            sendCainMsg(cainmsg,1,back);
-        }
 
         Coord senderCoord = cainmsg->getSenderCoord();
         dist = baseMobility->getCurrentPosition().distance(senderCoord);

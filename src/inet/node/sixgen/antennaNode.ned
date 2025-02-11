@@ -20,7 +20,6 @@ import inet.routing.sixgen.antennaRouting;
 
 module antennaNode extends WirelessHost{
     parameters:
-        @display("i=device/cellphone");
         wlan[*].mgmt.typename = default("Ieee80211MgmtAdhoc");
         wlan[*].agent.typename = default("");
         forwarding = default(true);

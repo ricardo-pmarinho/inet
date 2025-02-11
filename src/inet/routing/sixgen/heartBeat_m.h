@@ -35,6 +35,7 @@ class HeartBeat;
 class SNOOPHB;
 class FLWEIGHT;
 class DRONEMSG;
+class SATMSG;
 class ANTENNA;
 class CHDEF;
 class RESPHB;
@@ -94,6 +95,7 @@ namespace wirelessrouting {
  *     WGHT = 19;
  *     LEACH = 20;
  *     DRONE = 21;
+ *     SAT = 22;
  *     SNP_IPv6 = 101;
  *     RESP_IPv6 = 102;
  *     CAINREQ_IPv6 = 103;
@@ -115,6 +117,7 @@ namespace wirelessrouting {
  *     WGHT_IPv6 = 119;
  *     LEACH_IPv6 = 120;
  *     DRONE_IPv6 = 121;
+ *     SAT_IPv6 = 122;
  *     def = 99;
  * }
  * </pre>
@@ -141,6 +144,7 @@ enum heartBeatType {
     WGHT = 19,
     LEACH = 20,
     DRONE = 21,
+    SAT = 22,
     SNP_IPv6 = 101,
     RESP_IPv6 = 102,
     CAINREQ_IPv6 = 103,
@@ -162,11 +166,12 @@ enum heartBeatType {
     WGHT_IPv6 = 119,
     LEACH_IPv6 = 120,
     DRONE_IPv6 = 121,
+    SAT_IPv6 = 122,
     def = 99
 };
 
 /**
- * Class generated from <tt>inet/routing/sixgen/heartBeat.msg:81</tt> by nedtool.
+ * Class generated from <tt>inet/routing/sixgen/heartBeat.msg:83</tt> by nedtool.
  * <pre>
  * class HeartBeat extends FieldsChunk
  * {
@@ -204,7 +209,7 @@ inline void doParsimPacking(omnetpp::cCommBuffer *b, const HeartBeat& obj) {obj.
 inline void doParsimUnpacking(omnetpp::cCommBuffer *b, HeartBeat& obj) {obj.parsimUnpack(b);}
 
 /**
- * Class generated from <tt>inet/routing/sixgen/heartBeat.msg:85</tt> by nedtool.
+ * Class generated from <tt>inet/routing/sixgen/heartBeat.msg:87</tt> by nedtool.
  * <pre>
  * class SNOOPHB extends HeartBeat
  * {
@@ -321,7 +326,7 @@ inline void doParsimPacking(omnetpp::cCommBuffer *b, const SNOOPHB& obj) {obj.pa
 inline void doParsimUnpacking(omnetpp::cCommBuffer *b, SNOOPHB& obj) {obj.parsimUnpack(b);}
 
 /**
- * Class generated from <tt>inet/routing/sixgen/heartBeat.msg:109</tt> by nedtool.
+ * Class generated from <tt>inet/routing/sixgen/heartBeat.msg:111</tt> by nedtool.
  * <pre>
  * class FLWEIGHT extends HeartBeat
  * {
@@ -413,7 +418,7 @@ inline void doParsimPacking(omnetpp::cCommBuffer *b, const FLWEIGHT& obj) {obj.p
 inline void doParsimUnpacking(omnetpp::cCommBuffer *b, FLWEIGHT& obj) {obj.parsimUnpack(b);}
 
 /**
- * Class generated from <tt>inet/routing/sixgen/heartBeat.msg:126</tt> by nedtool.
+ * Class generated from <tt>inet/routing/sixgen/heartBeat.msg:128</tt> by nedtool.
  * <pre>
  * class DRONEMSG extends HeartBeat
  * {
@@ -466,7 +471,60 @@ inline void doParsimPacking(omnetpp::cCommBuffer *b, const DRONEMSG& obj) {obj.p
 inline void doParsimUnpacking(omnetpp::cCommBuffer *b, DRONEMSG& obj) {obj.parsimUnpack(b);}
 
 /**
- * Class generated from <tt>inet/routing/sixgen/heartBeat.msg:133</tt> by nedtool.
+ * Class generated from <tt>inet/routing/sixgen/heartBeat.msg:135</tt> by nedtool.
+ * <pre>
+ * class SATMSG extends HeartBeat
+ * {
+ *     unsigned int hopCount;
+ *     L3Address destAddr;
+ *     L3Address sourceAddr;
+ *     Coord senderCoord;
+ * }
+ * </pre>
+ */
+class INET_API SATMSG : public ::inet::wirelessrouting::HeartBeat
+{
+  protected:
+    unsigned int hopCount = 0;
+    L3Address destAddr;
+    L3Address sourceAddr;
+    Coord senderCoord;
+
+  private:
+    void copy(const SATMSG& other);
+
+  protected:
+    // protected and unimplemented operator==(), to prevent accidental usage
+    bool operator==(const SATMSG&);
+
+  public:
+    SATMSG();
+    SATMSG(const SATMSG& other);
+    virtual ~SATMSG();
+    SATMSG& operator=(const SATMSG& other);
+    virtual SATMSG *dup() const override {return new SATMSG(*this);}
+    virtual void parsimPack(omnetpp::cCommBuffer *b) const override;
+    virtual void parsimUnpack(omnetpp::cCommBuffer *b) override;
+
+    // field getter/setter methods
+    virtual unsigned int getHopCount() const;
+    virtual void setHopCount(unsigned int hopCount);
+    virtual const L3Address& getDestAddr() const;
+    virtual L3Address& getDestAddrForUpdate() { handleChange();return const_cast<L3Address&>(const_cast<SATMSG*>(this)->getDestAddr());}
+    virtual void setDestAddr(const L3Address& destAddr);
+    virtual const L3Address& getSourceAddr() const;
+    virtual L3Address& getSourceAddrForUpdate() { handleChange();return const_cast<L3Address&>(const_cast<SATMSG*>(this)->getSourceAddr());}
+    virtual void setSourceAddr(const L3Address& sourceAddr);
+    virtual const Coord& getSenderCoord() const;
+    virtual Coord& getSenderCoordForUpdate() { handleChange();return const_cast<Coord&>(const_cast<SATMSG*>(this)->getSenderCoord());}
+    virtual void setSenderCoord(const Coord& senderCoord);
+};
+
+inline void doParsimPacking(omnetpp::cCommBuffer *b, const SATMSG& obj) {obj.parsimPack(b);}
+inline void doParsimUnpacking(omnetpp::cCommBuffer *b, SATMSG& obj) {obj.parsimUnpack(b);}
+
+/**
+ * Class generated from <tt>inet/routing/sixgen/heartBeat.msg:142</tt> by nedtool.
  * <pre>
  * class ANTENNA extends HeartBeat
  * {
@@ -514,7 +572,7 @@ inline void doParsimPacking(omnetpp::cCommBuffer *b, const ANTENNA& obj) {obj.pa
 inline void doParsimUnpacking(omnetpp::cCommBuffer *b, ANTENNA& obj) {obj.parsimUnpack(b);}
 
 /**
- * Class generated from <tt>inet/routing/sixgen/heartBeat.msg:139</tt> by nedtool.
+ * Class generated from <tt>inet/routing/sixgen/heartBeat.msg:148</tt> by nedtool.
  * <pre>
  * class CHDEF extends HeartBeat
  * {
@@ -558,7 +616,7 @@ inline void doParsimPacking(omnetpp::cCommBuffer *b, const CHDEF& obj) {obj.pars
 inline void doParsimUnpacking(omnetpp::cCommBuffer *b, CHDEF& obj) {obj.parsimUnpack(b);}
 
 /**
- * Class generated from <tt>inet/routing/sixgen/heartBeat.msg:144</tt> by nedtool.
+ * Class generated from <tt>inet/routing/sixgen/heartBeat.msg:153</tt> by nedtool.
  * <pre>
  * class RESPHB extends HeartBeat
  * {
@@ -625,7 +683,7 @@ inline void doParsimPacking(omnetpp::cCommBuffer *b, const RESPHB& obj) {obj.par
 inline void doParsimUnpacking(omnetpp::cCommBuffer *b, RESPHB& obj) {obj.parsimUnpack(b);}
 
 /**
- * Class generated from <tt>inet/routing/sixgen/heartBeat.msg:154</tt> by nedtool.
+ * Class generated from <tt>inet/routing/sixgen/heartBeat.msg:163</tt> by nedtool.
  * <pre>
  * class CAINMSG extends HeartBeat
  * {
@@ -751,7 +809,7 @@ inline void doParsimPacking(omnetpp::cCommBuffer *b, const CAINMSG& obj) {obj.pa
 inline void doParsimUnpacking(omnetpp::cCommBuffer *b, CAINMSG& obj) {obj.parsimUnpack(b);}
 
 /**
- * Class generated from <tt>inet/routing/sixgen/heartBeat.msg:178</tt> by nedtool.
+ * Class generated from <tt>inet/routing/sixgen/heartBeat.msg:187</tt> by nedtool.
  * <pre>
  * class Rrep extends HeartBeat
  * {
@@ -815,7 +873,7 @@ inline void doParsimPacking(omnetpp::cCommBuffer *b, const Rrep& obj) {obj.parsi
 inline void doParsimUnpacking(omnetpp::cCommBuffer *b, Rrep& obj) {obj.parsimUnpack(b);}
 
 /**
- * Class generated from <tt>inet/routing/sixgen/heartBeat.msg:188</tt> by nedtool.
+ * Class generated from <tt>inet/routing/sixgen/heartBeat.msg:197</tt> by nedtool.
  * <pre>
  * class Rreq extends HeartBeat
  * {
@@ -879,7 +937,7 @@ inline void doParsimPacking(omnetpp::cCommBuffer *b, const Rreq& obj) {obj.parsi
 inline void doParsimUnpacking(omnetpp::cCommBuffer *b, Rreq& obj) {obj.parsimUnpack(b);}
 
 /**
- * Class generated from <tt>inet/routing/sixgen/heartBeat.msg:202</tt> by nedtool.
+ * Class generated from <tt>inet/routing/sixgen/heartBeat.msg:211</tt> by nedtool.
  * <pre>
  * //
  * // Represents an AODV Route Error
@@ -937,7 +995,7 @@ inline void doParsimPacking(omnetpp::cCommBuffer *b, const Rerr& obj) {obj.parsi
 inline void doParsimUnpacking(omnetpp::cCommBuffer *b, Rerr& obj) {obj.parsimUnpack(b);}
 
 /**
- * Class generated from <tt>inet/routing/sixgen/heartBeat.msg:210</tt> by nedtool.
+ * Class generated from <tt>inet/routing/sixgen/heartBeat.msg:219</tt> by nedtool.
  * <pre>
  * class RrepAck extends HeartBeat
  * {
@@ -1001,7 +1059,7 @@ inline void doParsimPacking(omnetpp::cCommBuffer *b, const RrepAck& obj) {obj.pa
 inline void doParsimUnpacking(omnetpp::cCommBuffer *b, RrepAck& obj) {obj.parsimUnpack(b);}
 
 /**
- * Class generated from <tt>inet/routing/sixgen/heartBeat.msg:224</tt> by nedtool.
+ * Class generated from <tt>inet/routing/sixgen/heartBeat.msg:233</tt> by nedtool.
  * <pre>
  * //
  * // Represents an internal timer for a Route Reply packet in Aodv module
@@ -1051,7 +1109,7 @@ inline void doParsimPacking(omnetpp::cCommBuffer *b, const WaitForRrep& obj) {ob
 inline void doParsimUnpacking(omnetpp::cCommBuffer *b, WaitForRrep& obj) {obj.parsimUnpack(b);}
 
 /**
- * Class generated from <tt>inet/routing/sixgen/heartBeat.msg:235</tt> by nedtool.
+ * Class generated from <tt>inet/routing/sixgen/heartBeat.msg:244</tt> by nedtool.
  * <pre>
  * //
  * // Represents a timer for delayed sending
@@ -1094,7 +1152,7 @@ inline void doParsimPacking(omnetpp::cCommBuffer *b, const PacketHolderMessage& 
 inline void doParsimUnpacking(omnetpp::cCommBuffer *b, PacketHolderMessage& obj) {obj.parsimUnpack(b);}
 
 /**
- * Struct generated from inet/routing/sixgen/heartBeat.msg:239 by nedtool.
+ * Struct generated from inet/routing/sixgen/heartBeat.msg:248 by nedtool.
  */
 struct INET_API UnreachableNode
 {

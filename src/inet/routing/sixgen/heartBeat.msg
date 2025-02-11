@@ -54,6 +54,7 @@ enum heartBeatType
     WGHT = 19;
     LEACH = 20;
     DRONE = 21;
+    SAT = 22;
     SNP_IPv6 = 101;
     RESP_IPv6 = 102;
     CAINREQ_IPv6 = 103;
@@ -75,6 +76,7 @@ enum heartBeatType
     WGHT_IPv6 = 119;
     LEACH_IPv6 = 120;
     DRONE_IPv6 = 121;
+    SAT_IPv6 = 122;
     def = 99;
 };
 
@@ -124,6 +126,13 @@ class FLWEIGHT extends HeartBeat{
 }
 
 class DRONEMSG extends HeartBeat{
+    unsigned int hopCount;
+    L3Address destAddr;
+    L3Address sourceAddr;
+    Coord senderCoord;
+}
+
+class SATMSG extends HeartBeat{
     unsigned int hopCount;
     L3Address destAddr;
     L3Address sourceAddr;

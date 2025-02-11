@@ -243,13 +243,9 @@ void DroneRouting::handleMessageWhenUp(cMessage *msg)
             scheduleAt(simTime()+5, droneTimer);
         }
         else if (msg == counterTimer) {
-            scheduleAt(simTime() + 1, counterTimer);
-            timeCounter++;
-            if(timeCounter == 5){
-                timeCounter=0;
-                com_range=0;
-                hop_range=0;
-            }
+            auto snoopPkg = createSnoopMsg();
+            sendSnooping(snoopPkg, 1);
+            scheduleAt(simTime() + 5, counterTimer);
         }else if (msg == blacklistTimer)
             handleBlackListTimer();
         else if (msg->getKind() == KIND_DELAYEDSEND) {
@@ -278,7 +274,7 @@ void DroneRouting::handleWaitForRREP(WaitForRrep *rrepTimer)
         return;
     }
     //if(strcmp(this->getParentModule()->getName(),"drone")){//not a drone
-        auto rreq = createSnoopMsg();
+//        auto rreq = createSnoopMsg();
 
 
         // the node MAY try again to discover a route by broadcasting another
@@ -286,7 +282,7 @@ void DroneRouting::handleWaitForRREP(WaitForRrep *rrepTimer)
         if (rrepTimer->getLastTTL() == netDiameter) // netDiameter is the maximum TTL value
             addressToRreqRetries[destAddr]++;
 
-        sendSnooping(rreq, 0);
+//        sendSnooping(rreq, 0);
 }
 
 void DroneRouting::handleBlackListTimer()
@@ -593,16 +589,13 @@ void DroneRouting::sendHeartBeatpkg(const Ptr<HeartBeat>& hbpacket, const L3Addr
     }
 }
 
-const Ptr<SNOOPHB> DroneRouting::createSnoopMsg(){
+const Ptr<SNOOPHB> DroneRouting::createSnoopMsg()
+{
     auto snoopPkg = makeShared<SNOOPHB>();
     Coord coord;
     int batteryPercent = 100;
-    //if(strcmp(this->getParentModule()->getName(),"drone")){//not a drone
-        coord = Coord(baseMobility->getCurrentPosition());
-        batteryPercent = (int)round(unit(energyStorage->getResidualEnergyCapacity()/energyStorage->getNominalEnergyCapacity()).get() * 100);
-    //}else
-        //coord = Coord(droneMobility->getCurrentPosition());
-    //Coord senderCoord = Coord(baseMobility->getCurrentPosition());
+    coord = Coord(baseMobility->getCurrentPosition());
+    batteryPercent = (int)round(unit(energyStorage->getResidualEnergyCapacity()/energyStorage->getNominalEnergyCapacity()).get() * 100);
     Coord senderCoord = coord;
     snoopPkg->setPacketType(usingIpv6 ? SNP_IPv6 : SNP);
     snoopPkg->setChunkLength(usingIpv6 ? B(48) : B(24));
@@ -928,7 +921,7 @@ void DroneRouting::handleStartOperation(LifecycleOperation *operation)
     if (useHelloMessages)
         scheduleAt(simTime() + helloInterval - *periodicJitter, helloMsgTimer);
     scheduleAt(simTime() + 2, counterTimer);
-    scheduleAt(simTime()+1,droneTimer);
+    //scheduleAt(simTime()+1,droneTimer);
 
     //    scheduleAt(simTime()+0.7, cainFwdTimer);
 }
@@ -1143,8 +1136,6 @@ void DroneRouting::clearState()
         cancelEvent(expungeTimer);
     if (counterTimer)
         cancelEvent(counterTimer);
-    if(sendFlWeights)
-        cancelEvent(sendFlWeights);
 }
 
 L3Address DroneRouting::getSelfIPAddress() const

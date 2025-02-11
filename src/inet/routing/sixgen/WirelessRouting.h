@@ -351,6 +351,7 @@ private:
     cMessage *sendFlWeights = nullptr; //timer for send the FL weights for CH or antenna
     cMessage *sendFlAvgWeights = nullptr; //timer for send the FL weights by CH or antenna
     cMessage *leachChDecision = nullptr; //timer for the nodes to start the CH decision
+    cMessage *snoopTimer = nullptr; //timer for send snooping message
 
     // lifecycle
     simtime_t rebootTime;    // the last time when the node rebooted
@@ -433,6 +434,8 @@ private:
     void recLeachRespMsg(const Ptr<RESPHB>& respMsg);
     void chDecision();
     void resetLeachCalculation();
+    void handleHostSnooping(const Ptr<SNOOPHB> snoop);
+    void handleDroneSnooping(const Ptr<SNOOPHB> snoop);
 //    void handleRREQ(const Ptr<Rreq>& rreq, const L3Address& sourceAddr, unsigned int timeToLive);
 //    void handleRERR(const Ptr<const Rerr>& rerr, const L3Address& sourceAddr);
 //    void handleHelloMessage(const Ptr<Rrep>& helloMessage);
