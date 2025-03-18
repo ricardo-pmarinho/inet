@@ -13,24 +13,34 @@
 // along with this program.  If not, see http://www.gnu.org/licenses/.
 // 
 
-package inet.node.sixgen;
+#include "CentralNode.h"
+#include "inet/networklayer/common/L3AddressResolver.h"
+#include "inet/transportlayer/contract/udp/UdpSocket.h"
 
-import inet.node.inet.WirelessHost;
-import inet.routing.sixgen.antennaRouting;
-import inet.linklayer.ethernet.EthernetInterface;
-import inet.linklayer.ethernet.EtherMac; // Importação necessária
+namespace inet {
 
-module AntennaNode extends WirelessHost{
-    parameters:
-        wlan[*].mgmt.typename = default("Ieee80211MgmtAdhoc");
-        wlan[*].agent.typename = default("");
-        forwarding = default(true);
-	submodules:
-		routing : antennaRouting{
-            @display("p=50,50");
-        }
-    connections:
-        routing.socketOut --> at.in++;
-        routing.socketIn <-- at.out++;
-        
+Define_Module(CentralNode);
+
+void CentralNode::initialize()
+{
+    EV << "Central node" << endl; // Inicializa o socket UDP
+//    socket.setOutputGate(gate("socketIn"));
+//    socket.bind(1234); // Porta local para receber mensagens
 }
+
+void CentralNode::handleMessage(cMessage *msg)
+{
+    EV << "Receiving message from antenna" << endl;
+
+}
+
+CentralNode::CentralNode() {
+    // TODO Auto-generated constructor stub
+
+}
+
+CentralNode::~CentralNode() {
+    // TODO Auto-generated destructor stub
+}
+
+} /* namespace inet */

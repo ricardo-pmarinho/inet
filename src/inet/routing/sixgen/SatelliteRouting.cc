@@ -881,7 +881,7 @@ void SatelliteRouting::handleStartOperation(LifecycleOperation *operation)
     // equal to (MESSAGE_INTERVAL - jitter), where jitter is the random value.
     if (useHelloMessages)
         scheduleAt(simTime() + helloInterval - *periodicJitter, helloMsgTimer);
-    scheduleAt(simTime() + 2, counterTimer);
+    scheduleAt(simTime() + 1.5, counterTimer);
 
 //    scheduleAt(simTime()+0.7, cainFwdTimer);handleCainFWD
 }
@@ -1216,34 +1216,34 @@ void SatelliteRouting::calculate_q_matrix(){
     }
 }
 
-void SatelliteRouting::calculateDnnDecision(L3Address cainDest){
-    for(int i = 0; i<100; i++){
-        int state = get_coverage_state(cainDest);
-        double dnnDist;
-        if(rl_type == "Euclidean1" || rl_type == "Euclidean2" ||
-                rl_type == "Euclidean3")
-            dnnDist = calculateDnnDist(state, distMap->at(cainDest),rl_type);
-
-        std::vector<bool> *decisionVect = network->calculateDnn(dnnDist, meanDelay.dbl()*pow(10,6));
-        int decision;
-
-        if(decisionVect->operator [](0)){//true
-            if(decisionVect->operator [](1))//true-true
-                decision=3;
-            else//true-false
-                decision=2;
-        }else{//false
-            if(decisionVect->operator [](1))//false-true
-                decision=1;
-            else//false-false
-                decision=0;
-        }
-        calculate_coverage_reward(state, decision, cainDest);
-        calculate_q_matrix();
-        float result = qMatrix[state][decision];
-        network->updateDnn(result,decisionVect);
-    }
-}
+//void SatelliteRouting::calculateDnnDecision(L3Address cainDest){
+//    for(int i = 0; i<100; i++){
+//        int state = get_coverage_state(cainDest);
+//        double dnnDist;
+//        if(rl_type == "Euclidean1" || rl_type == "Euclidean2" ||
+//                rl_type == "Euclidean3")
+//            dnnDist = calculateDnnDist(state, distMap->at(cainDest),rl_type);
+//
+////        std::vector<bool> *decisionVect = network->calculateDnn(dnnDist, meanDelay.dbl()*pow(10,6));
+//        int decision;
+//
+//        if(decisionVect->operator [](0)){//true
+//            if(decisionVect->operator [](1))//true-true
+//                decision=3;
+//            else//true-false
+//                decision=2;
+//        }else{//false
+//            if(decisionVect->operator [](1))//false-true
+//                decision=1;
+//            else//false-false
+//                decision=0;
+//        }
+//        calculate_coverage_reward(state, decision, cainDest);
+//        calculate_q_matrix();
+//        float result = qMatrix[state][decision];
+//        network->updateDnn(result,decisionVect);
+//    }
+//}
 
 double SatelliteRouting::calculateDnnDist(int state, double dist, std::string rl_type){
     if(rl_type == "Euclidean1" || rl_type == "Hop1"){

@@ -13,24 +13,26 @@
 // along with this program.  If not, see http://www.gnu.org/licenses/.
 // 
 
-package inet.node.sixgen;
+#ifndef INET_NODE_SIXGEN_ANTENNANODE_H_
+#define INET_NODE_SIXGEN_ANTENNANODE_H_
 
-import inet.node.inet.WirelessHost;
-import inet.routing.sixgen.antennaRouting;
-import inet.linklayer.ethernet.EthernetInterface;
-import inet.linklayer.ethernet.EtherMac; // Importação necessária
+#include <omnetpp.h>
+#include "inet/transportlayer/contract/udp/UdpSocket.h"
 
-module AntennaNode extends WirelessHost{
-    parameters:
-        wlan[*].mgmt.typename = default("Ieee80211MgmtAdhoc");
-        wlan[*].agent.typename = default("");
-        forwarding = default(true);
-	submodules:
-		routing : antennaRouting{
-            @display("p=50,50");
-        }
-    connections:
-        routing.socketOut --> at.in++;
-        routing.socketIn <-- at.out++;
-        
-}
+using namespace omnetpp;
+
+namespace inet {
+
+class AntennaNode : public cSimpleModule {
+protected:
+    UdpSocket socket;
+    virtual void initialize() override;
+    virtual void handleMessage(cMessage *msg) override;
+public:
+    AntennaNode();
+    virtual ~AntennaNode();
+};
+
+} /* namespace inet */
+
+#endif /* INET_NODE_SIXGEN_ANTENNANODE_H_ */

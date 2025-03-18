@@ -232,6 +232,7 @@ OBJS = \
     $O/inet/environment/ground/OsgEarthGround.o \
     $O/inet/environment/objectcache/BvhObjectCache.o \
     $O/inet/environment/objectcache/GridObjectCache.o \
+    $O/inet/gat/Gat.o \
     $O/inet/linklayer/acking/AckingMac.o \
     $O/inet/linklayer/acking/AckingMacHeaderSerializer.o \
     $O/inet/linklayer/acking/AckingMacProtocolDissector.o \
@@ -567,6 +568,8 @@ OBJS = \
     $O/inet/networklayer/xmipv6/BindingCache.o \
     $O/inet/networklayer/xmipv6/BindingUpdateList.o \
     $O/inet/networklayer/xmipv6/xMIPv6.o \
+    $O/inet/node/sixgen/AntennaNode.o \
+    $O/inet/node/sixgen/CentralNode.o \
     $O/inet/physicallayer/analogmodel/bitlevel/DimensionalSignalAnalogModel.o \
     $O/inet/physicallayer/analogmodel/bitlevel/LayeredDimensionalAnalogModel.o \
     $O/inet/physicallayer/analogmodel/bitlevel/LayeredScalarAnalogModel.o \

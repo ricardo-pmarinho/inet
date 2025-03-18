@@ -13,24 +13,10 @@
 // along with this program.  If not, see http://www.gnu.org/licenses/.
 // 
 
-package inet.node.sixgen;
+package inet.gat;
 
-import inet.node.inet.WirelessHost;
-import inet.routing.sixgen.antennaRouting;
-import inet.linklayer.ethernet.EthernetInterface;
-import inet.linklayer.ethernet.EtherMac; // Importação necessária
-
-module AntennaNode extends WirelessHost{
+simple Gat{
     parameters:
-        wlan[*].mgmt.typename = default("Ieee80211MgmtAdhoc");
-        wlan[*].agent.typename = default("");
-        forwarding = default(true);
-	submodules:
-		routing : antennaRouting{
-            @display("p=50,50");
-        }
-    connections:
-        routing.socketOut --> at.in++;
-        routing.socketIn <-- at.out++;
-        
-}
+        @display("i=block/cogwheel");
+        string name="GAT module";        
+}	

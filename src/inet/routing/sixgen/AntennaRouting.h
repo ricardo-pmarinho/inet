@@ -147,6 +147,7 @@ private:
     IInterfaceTable *interfaceTable = nullptr;
     INetfilter *networkProtocol = nullptr;
     UdpSocket socket;
+    UdpSocket centralSocket;
     bool usingIpv6 = false;
 
     //ch definition
@@ -232,6 +233,7 @@ private:
     bool updateValidRouteLifeTime(const L3Address& destAddr, simtime_t lifetime);
     void scheduleExpungeRoutes();
     void expungeRoutes();
+//    void sendToCentralNode(const char *message);
 //
 //    /* Control packet creators */
     const Ptr<SNOOPHB> createSnoopMsg();

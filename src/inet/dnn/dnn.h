@@ -46,7 +46,7 @@ public:
     bool getDecision();
     void setNeuronTotalWeights(std::vector<float> *weightVector);
     /*updates*/
-    std::vector<bool>* calculateDnn(double dist, double delay);
+    std::vector<bool>* calculateDnn(double attention,double dist, double delay);
     void updateDnn(float result,std::vector<bool> *decision);
     void updateWeights(unsigned int weightCounter,bool isCh);
 };

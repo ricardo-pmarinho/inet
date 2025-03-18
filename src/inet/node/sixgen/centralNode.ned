@@ -12,25 +12,26 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with this program.  If not, see http://www.gnu.org/licenses/.
 // 
-
 package inet.node.sixgen;
 
-import inet.node.inet.WirelessHost;
-import inet.routing.sixgen.antennaRouting;
+import inet.node.inet.StandardHost;
+import inet.networklayer.configurator.ipv4.Ipv4NetworkConfigurator;
 import inet.linklayer.ethernet.EthernetInterface;
 import inet.linklayer.ethernet.EtherMac; // Importação necessária
 
-module AntennaNode extends WirelessHost{
+module CentralNode extends StandardHost {
     parameters:
-        wlan[*].mgmt.typename = default("Ieee80211MgmtAdhoc");
-        wlan[*].agent.typename = default("");
+        @class(CentralNode);
+        @display("p=150,150");
+        eth[*].typename = default("EthernetInterface");
+        eth[*].mac.typename = default("EtherMac");
+        eth[*].queue.typename = default("DropTailQueue");
+        routing.typename = default("Ipv4Routing");
         forwarding = default(true);
-	submodules:
-		routing : antennaRouting{
+    gates:
+        input socketIn;  // Porta de entrada para mensagens
+    submodules:
+        configurator: Ipv4NetworkConfigurator {
             @display("p=50,50");
         }
-    connections:
-        routing.socketOut --> at.in++;
-        routing.socketIn <-- at.out++;
-        
 }

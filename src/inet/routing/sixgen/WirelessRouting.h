@@ -34,6 +34,7 @@
 #include "inet/common/geometry/common/Coord.h"
 #include "inet/power/storage/SimpleEpEnergyStorage.h"
 #include "inet/power/management/SimpleEpEnergyManagement.h"
+#include "inet/gat/Gat.h"
 #include <omnetpp.h>
 #include "inet/dnn/dnn.h"
 
@@ -62,7 +63,7 @@ private:
     double phero = 0.0; //node's pheromone
     double probPhero = 0.0;
     dnn* network;
-    dnn* droneNetwork;
+//    dnn* droneNetwork;
     int chBattery = 0;
     int newChBattery = 0;
     int index=0;
@@ -135,6 +136,7 @@ private:
      * Stores the distance to the node's CH
      * */
     double chDist;
+    Gat* gat;
 
     map<pair<L3Address,L3Address>,pair<L3Address,int>> *routes;//<<originator,destination>,<next_hop,battery>>
     map<pair<L3Address,L3Address>,L3Address> *revRoute;//<<originator,destination>,prev_hop>

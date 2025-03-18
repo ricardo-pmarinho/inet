@@ -193,6 +193,7 @@ void WirelessRouting::initialize(int stage)
         bestLarHopAddr= new pair<L3Address,float>();
         sprayNWaitNeighb = new vector<L3Address>();
 
+        gat = new Gat();
         fwdAck = new vector<int>();
         reqAck = new vector<int>();
         hopAck = new vector<int>();
@@ -255,7 +256,7 @@ void WirelessRouting::initialize(int stage)
             }
         }
         network=network->createDnn(3, 2, 3, 1);
-        droneNetwork = droneNetwork->createDnn(2,2,3,1);
+//        droneNetwork = droneNetwork->createDnn(2,2,3,1);
 //        for(dnn* aux = network; aux->getNeuronConnections()->size()>0;
 //                aux = aux->getNeuronConnections()->operator [](0)){
 //            EV<< "Neuron aux " << aux->getNeuronName() << endl;
@@ -1799,6 +1800,8 @@ void WirelessRouting::handleHostSnooping(const Ptr<SNOOPHB> snoop)
     if(dist > com_range)
         com_range = dist;
 
+    this->gat->insertGatNeighbor(snoop->getOriginatorAddr(),dist);
+
     neighbMap->operator [](sourceAddr) = snoop->getBatteryPercent();
     //sprayNwait
     if (!previousHopRoute || previousHopRoute->getSource() != this) {
@@ -3131,7 +3134,8 @@ void WirelessRouting::calculateDnnDecision(L3Address cainDest){
             dnnDist = calculateDnnDist(state, distMap->at(cainDest),rl_type);
         else
             dnnDist = calculateDnnDist(state, hopMap->at(cainDest),rl_type);
-        std::vector<bool> *decisionVect = network->calculateDnn(dnnDist, meanDelay.dbl()*pow(10,6));
+        double attention = this->gat->getAttention(cainDest);
+        std::vector<bool> *decisionVect = network->calculateDnn(attention,dnnDist, meanDelay.dbl()*pow(10,6));
         int decision;
 
         if(decisionVect->operator [](0)){//true

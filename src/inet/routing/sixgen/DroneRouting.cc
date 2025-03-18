@@ -936,7 +936,7 @@ void DroneRouting::handleStartOperation(LifecycleOperation *operation)
         // equal to (MESSAGE_INTERVAL - jitter), where jitter is the random value.
     if (useHelloMessages)
         scheduleAt(simTime() + helloInterval - *periodicJitter, helloMsgTimer);
-    scheduleAt(simTime() + 2, counterTimer);
+    scheduleAt(simTime() + 1.2, counterTimer);
 }
 
 void DroneRouting::handleCainFWD(const Ptr<CAINMSG>& cainmsg){

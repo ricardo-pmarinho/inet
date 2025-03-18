@@ -57,6 +57,9 @@ void AntennaRouting::initialize(int stage)
         routingTable = getModuleFromPar<IRoutingTable>(par("routingTableModule"), this);
         interfaceTable = getModuleFromPar<IInterfaceTable>(par("interfaceTableModule"), this);
         networkProtocol = getModuleFromPar<INetfilter>(par("networkProtocolModule"), this);
+//
+//        centralSocket.setOutputGate(gate("socketOut"));
+//        centralSocket.bind(1234);
 
         WirelessRoutingUDPPort = par("udpPort");
         askGratuitousRREP = par("askGratuitousRREP");
@@ -228,6 +231,7 @@ void AntennaRouting::handleMessageWhenUp(cMessage *msg)
         else if (msg == counterTimer) {
             auto snoopPkg = createSnoopMsg();
             sendSnooping(snoopPkg, 1);
+//            sendToCentralNode("Hello from antennaNode");
             scheduleAt(simTime() + 5, counterTimer);
         }else if(msg == endTimer){
             rreqCount = rerrCount = 0;
@@ -248,6 +252,17 @@ void AntennaRouting::handleMessageWhenUp(cMessage *msg)
     else
         socket.processMessage(msg);
 }
+
+//void AntennaRouting::sendToCentralNode(const char *message)
+//{
+//    // Resolve o endereço do centralNode
+////    L3Address destAddr = L3AddressResolver().resolve("central");
+////    EV << "destaddr: " << destAddr << endl;
+////
+////    Packet *packet = new Packet(message);
+////
+////    centralSocket.sendTo(packet,destAddr,1234); // Porta de destino 1234
+//}
 
 void AntennaRouting::handleBlackListTimer()
 {
@@ -1197,34 +1212,34 @@ void AntennaRouting::calculate_q_matrix(){
     }
 }
 
-void AntennaRouting::calculateDnnDecision(L3Address cainDest){
-    for(int i = 0; i<100; i++){
-        int state = get_coverage_state(cainDest);
-        double dnnDist;
-        if(rl_type == "Euclidean1" || rl_type == "Euclidean2" ||
-                rl_type == "Euclidean3")
-            dnnDist = calculateDnnDist(state, distMap->at(cainDest),rl_type);
-
-        std::vector<bool> *decisionVect = network->calculateDnn(dnnDist, meanDelay.dbl()*pow(10,6));
-        int decision;
-
-        if(decisionVect->operator [](0)){//true
-            if(decisionVect->operator [](1))//true-true
-                decision=3;
-            else//true-false
-                decision=2;
-        }else{//false
-            if(decisionVect->operator [](1))//false-true
-                decision=1;
-            else//false-false
-                decision=0;
-        }
-        calculate_coverage_reward(state, decision, cainDest);
-        calculate_q_matrix();
-        float result = qMatrix[state][decision];
-        network->updateDnn(result,decisionVect);
-    }
-}
+//void AntennaRouting::calculateDnnDecision(L3Address cainDest){
+//    for(int i = 0; i<100; i++){
+//        int state = get_coverage_state(cainDest);
+//        double dnnDist;
+//        if(rl_type == "Euclidean1" || rl_type == "Euclidean2" ||
+//                rl_type == "Euclidean3")
+//            dnnDist = calculateDnnDist(state, distMap->at(cainDest),rl_type);
+//
+////        std::vector<bool> *decisionVect = network->calculateDnn(dnnDist, meanDelay.dbl()*pow(10,6));
+//        int decision;
+//
+//        if(decisionVect->operator [](0)){//true
+//            if(decisionVect->operator [](1))//true-true
+//                decision=3;
+//            else//true-false
+//                decision=2;
+//        }else{//false
+//            if(decisionVect->operator [](1))//false-true
+//                decision=1;
+//            else//false-false
+//                decision=0;
+//        }
+//        calculate_coverage_reward(state, decision, cainDest);
+//        calculate_q_matrix();
+//        float result = qMatrix[state][decision];
+//        network->updateDnn(result,decisionVect);
+//    }
+//}
 
 double AntennaRouting::calculateDnnDist(int state, double dist, std::string rl_type){
     if(rl_type == "Euclidean1" || rl_type == "Hop1"){
