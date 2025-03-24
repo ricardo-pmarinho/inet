@@ -138,6 +138,7 @@ private:
     double chDist;
     Gat* gat;
 
+
     map<pair<L3Address,L3Address>,pair<L3Address,int>> *routes;//<<originator,destination>,<next_hop,battery>>
     map<pair<L3Address,L3Address>,L3Address> *revRoute;//<<originator,destination>,prev_hop>
 

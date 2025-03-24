@@ -73,6 +73,7 @@ double Gat::calcAttention()
         e->push_back(leakrelu);
     }
 
+
     vector<double>::iterator itSoft;
     for(itSoft = e->begin(); itSoft != e->end();itSoft++){
         double tempSoft = 0.0;
@@ -87,7 +88,7 @@ double Gat::calcAttention()
 double Gat::getAttention(L3Address cainDest)
 {
     int index=0;
-    vector<L3Address>::iterator it;
+    vector<L3Address>::iterator it  = neighAdrrs->begin();
     for(it = neighAdrrs->begin(); it != neighAdrrs->end();it++){
         if(*it == cainDest)
             break;

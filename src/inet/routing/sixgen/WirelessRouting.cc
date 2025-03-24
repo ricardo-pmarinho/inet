@@ -149,7 +149,7 @@ void WirelessRouting::initialize(int stage)
         recSatMsgSignal = registerSignal("recSatMsgSignal");
         droneDistSignal = registerSignal("droneDistSignal");
         satDistSignal = registerSignal("satDistSignal");
-        pheromoneSignal = registerSignal("pheromoneSignal");
+
 
     }
     else if (stage == INITSTAGE_ROUTING_PROTOCOLS) {
@@ -197,7 +197,8 @@ void WirelessRouting::initialize(int stage)
         fwdAck = new vector<int>();
         reqAck = new vector<int>();
         hopAck = new vector<int>();
-        chAddr = L3Address("145.236.0.3");//addressType->getUnspecifiedAddress();
+//        chAddr = L3Address("145.236.0.1");
+        chAddr = addressType->getUnspecifiedAddress();
         int mlThreshold = getModuleByPath("simpleNetwork")->par("mlThreshold");
 
         vector<float>* a0;
@@ -369,8 +370,11 @@ void WirelessRouting::handleMessageWhenUp(cMessage *msg)
             chDecision();
             scheduleAt(simTime()+5, leachChDecision);
         }else if(msg == chInfo){
-            auto snoopPkg = createSnoopMsg();
-            sendSnooping(snoopPkg, 1);
+            EV << "this ip: " << this->getSelfIPAddress() << endl;
+//            if(this->getSelfIPAddress() == L3Address("145.236.0.1")){
+                auto snoopPkg = createSnoopMsg();
+                sendSnooping(snoopPkg, 1);
+//            }
             if(chInfo->isScheduled())
                 cancelEvent(chInfo);
             scheduleAt(simTime()+5, chInfo);
@@ -386,7 +390,7 @@ void WirelessRouting::handleMessageWhenUp(cMessage *msg)
                 oracle_->shutDownRecNode(getSelfIPAddress());
                 oracle_->checkShutdownNodes();
             }
-            scheduleAt(simTime() + 0.1, endTimer);
+            scheduleAt(simTime() + 5, endTimer);
         }else if(msg == cainAck){
             return;
         }/*else if(msg == chElection){
@@ -401,103 +405,101 @@ void WirelessRouting::handleMessageWhenUp(cMessage *msg)
             scheduleAt(simTime()+5, chReset);
         }*/else if(msg == cainTrigger){
             oracle_->setStartNode(getSelfIPAddress());
-//            if(!this->chAddr == getSelfIPAddress()){
-//                if (simTime() > rebootTime + deletePeriod || rebootTime == 0) {
-                    std::string netType = getModuleByPath("simpleNetwork")->par("networkType");
-                    auto cainMsg = createCainMsg();
-                    if(netType == "EECRM"){
-                        if(!bestHopAddr->first.isUnspecified()){
-                            cainMsg = createCainRREQ();
-                        }
-                    }else if(netType == "SC"){
-                        if(!bestHopAddr->first.isUnspecified()){
-                            cainMsg=createSCMSG();
-                        }
-                    }else if(netType == "LAR"){
-                        if(!bestLarHopAddr->first.isUnspecified()){
-                            cainMsg=createLARMSG();
-                        }
-                    }else if(netType == "SPRAY"){
-                        cainMsg = createSPRAYMSG(numNodes);
-                    }else if(netType == "BRAP"){
-                        cainMsg = createBRAPMSG();
+            std::string netType = getModuleByPath("simpleNetwork")->par("networkType");
+            if(this->getSelfIPAddress() == L3Address("145.236.0.1")){
+                auto cainMsg = createCainMsg();
+            if(netType == "EECRM"){
+                if(!bestHopAddr->first.isUnspecified()){
+                    cainMsg = createCainRREQ();
+                }
+            }else if(netType == "SC"){
+                if(!bestHopAddr->first.isUnspecified()){
+                    cainMsg=createSCMSG();
+                }
+            }else if(netType == "LAR"){
+                if(!bestLarHopAddr->first.isUnspecified()){
+                    cainMsg=createLARMSG();
+                }
+            }else if(netType == "SPRAY"){
+                cainMsg = createSPRAYMSG(numNodes);
+            }else if(netType == "BRAP"){
+                cainMsg = createBRAPMSG();
+            }
+            ostringstream stream;
+            if(cainMsg->getPacketType() == CAINFWD || cainMsg->getPacketType() == CAINFWD_IPv6)
+                stream << "FWD-";
+            else if(cainMsg->getPacketType() == CAINREQ || cainMsg->getPacketType() == CAINREQ_IPv6)
+                stream << "REQ-";
+            stream << cainMsg->getSeqNum();
+            bool mlEnable = getModuleByPath("simpleNetwork")->par("mlEnable");
+            if (simTime() > rebootTime + deletePeriod || rebootTime == 0){
+                if(netType == "SPRAY"){
+                    if(getDevBatteryPower() >= powerThresh){
+                        sendSprayMsg(cainMsg);
+                        sentSprMsg++;
+                        emit(sentSprMsgSignal,sentSprMsg);
                     }
-                    ostringstream stream;
-                    if(cainMsg->getPacketType() == CAINFWD || cainMsg->getPacketType() == CAINFWD_IPv6)
-                        stream << "FWD-";
-                    else if(cainMsg->getPacketType() == CAINREQ || cainMsg->getPacketType() == CAINREQ_IPv6)
-                        stream << "REQ-";
-                    stream << cainMsg->getSeqNum();
-                    bool mlEnable = getModuleByPath("simpleNetwork")->par("mlEnable");
-                    if (simTime() > rebootTime + deletePeriod || rebootTime == 0){
-                        if(netType == "SPRAY"){
-                            if(getDevBatteryPower() >= powerThresh){
-                                sendSprayMsg(cainMsg);
-                                sentSprMsg++;
-                                emit(sentSprMsgSignal,sentSprMsg);
-                            }
-                        }else if(netType == "BRAP"){
-                            if(getDevBatteryPower() >= powerThresh){
-                                sendCainMsg(cainMsg, cainMsg->getHopCount(),0);
-                                sentBrapMsg++;
-                                emit(sentBrapMsgSignal,sentBrapMsg);
-                            }
-                        }
-                        if(!cainMsg->getCainDestAddr().isUnspecified()){
-                            if(cainMsg->getPacketType() == CAINREQ || cainMsg->getPacketType() == CAINREQ_IPv6 ||
-                                    cainMsg->getPacketType() == CAINFWD || cainMsg->getPacketType() == CAINFWD_IPv6){
-                                sentCainReqMsg++;
-                                emit(sentCainReqMsgSignal,sentCainReqMsg);
-                                bool mlEnable = getModuleByPath("simpleNetwork")->par("mlEnable");
-                                if(mlEnable && (cainMsg->getPacketType() == CAINREQ ||
-                                                cainMsg->getPacketType() == CAINREQ_IPv6)){
-                                    if(!cainMsg->getCainDestAddr().isBroadcast()){
-                                        calculateDnnDecision(cainMsg->getCainDestAddr());
-                                        bool decision = network->getDecision();
-                                        if(decision){
-                                            double back = 0;
-                                            sendCainMsg(cainMsg,2,back);
-                                        }
-//                                        calculate_coverage_reward(state,decision,cainMsg->getCainDestAddr());
-                                        sendProb=send_prob;
-                                        emit(sendProbSignal, sendProb);
-
-                                    }
-                                }else{
-                                    if(getDevBatteryPower() >= powerThresh){
-                                        double back = 0;
-                                        sendCainMsg(cainMsg,2,back);
-                                    }
-                                }
-                            }else if(cainMsg->getPacketType() == RREQ || cainMsg->getPacketType() == RREQ_IPv6){
-                                if(getDevBatteryPower() >= powerThresh){
-                                    double back = 0;
-                                    sendCainMsg(cainMsg,2,back);
-                                    sentCainRREPMsg++;
-                                    emit(sentCainRREQMsgSignal,sentCainRREPMsg);
-                                }
-                            }else if(cainMsg->getPacketType() == SCMSG || cainMsg->getPacketType() == SCMSG_IPv6){
-                                if(getDevBatteryPower() >= powerThresh){
-                                    double back = 0;
-                                    sendCainMsg(cainMsg,2,back);
-                                    sentCainFwdMsg++;
-                                    emit(sentCainFwdMsgSignal,sentCainFwdMsg);
-                                }
-                            }else if(cainMsg->getPacketType() == LAR || cainMsg->getPacketType() == LAR_IPv6){
-                                if(getDevBatteryPower() >= powerThresh){
-                                    double back = 0;
-                                    sendCainMsg(cainMsg,2,back);
-                                    sentLarMsg++;
-                                    emit(sentLarMsgSignal,sentLarMsg);
-                                }
-
-                            }
-                        }
+                }else if(netType == "BRAP"){
+                    if(getDevBatteryPower() >= powerThresh){
+                        sendCainMsg(cainMsg, cainMsg->getHopCount(),0);
+                        sentBrapMsg++;
+                        emit(sentBrapMsgSignal,sentBrapMsg);
                     }
-//                }
-//            }
-            if(getDevBatteryPower() >= powerThresh && !strcmp(this->getParentModule()->getName(),"host"))
+                }
+                if(!cainMsg->getCainDestAddr().isUnspecified()){
+                    if(cainMsg->getPacketType() == CAINREQ || cainMsg->getPacketType() == CAINREQ_IPv6 ||
+                            cainMsg->getPacketType() == CAINFWD || cainMsg->getPacketType() == CAINFWD_IPv6){
+                        sentCainReqMsg++;
+                        emit(sentCainReqMsgSignal,sentCainReqMsg);
+                        bool mlEnable = getModuleByPath("simpleNetwork")->par("mlEnable");
+                        if(mlEnable && (cainMsg->getPacketType() == CAINREQ ||
+                                        cainMsg->getPacketType() == CAINREQ_IPv6)){
+                            if(!cainMsg->getCainDestAddr().isBroadcast()){
+                                calculateDnnDecision(cainMsg->getCainDestAddr());
+                                bool decision = network->getDecision();
+                                if(decision){
+                                    double back = 0;
+                                    sendCainMsg(cainMsg,2,back);
+                                }
+                                sendProb=send_prob;
+                                emit(sendProbSignal, sendProb);
+                            }
+                        }else{
+                            if(getDevBatteryPower() >= powerThresh){
+                                double back = 0;
+                                sendCainMsg(cainMsg,2,back);
+                            }
+                        }
+                    }else if(cainMsg->getPacketType() == RREQ || cainMsg->getPacketType() == RREQ_IPv6){
+                        if(getDevBatteryPower() >= powerThresh){
+                            double back = 0;
+                            sendCainMsg(cainMsg,2,back);
+                            sentCainRREPMsg++;
+                            emit(sentCainRREQMsgSignal,sentCainRREPMsg);
+                        }
+                    }else if(cainMsg->getPacketType() == SCMSG || cainMsg->getPacketType() == SCMSG_IPv6){
+                        if(getDevBatteryPower() >= powerThresh){
+                            double back = 0;
+                            sendCainMsg(cainMsg,2,back);
+                            sentCainFwdMsg++;
+                            emit(sentCainFwdMsgSignal,sentCainFwdMsg);
+                        }
+                    }else if(cainMsg->getPacketType() == LAR || cainMsg->getPacketType() == LAR_IPv6){
+                        if(getDevBatteryPower() >= powerThresh){
+                            double back = 0;
+                            sendCainMsg(cainMsg,2,back);
+                            sentLarMsg++;
+                            emit(sentLarMsgSignal,sentLarMsg);
+                        }
+
+                    }
+                }
+
+            }
+            }
+            if(getDevBatteryPower() >= powerThresh && !cainTrigger->isScheduled())
                 scheduleAt(simTime()+2, cainTrigger);
+
         }else if(msg == cainFwdTimer){
                 handleFwdTimer();
         }else if(msg == conncetedDevTimer){
@@ -905,7 +907,7 @@ const Ptr<CHDEF> WirelessRouting::createChDefMsg(){
 
 const Ptr<CAINMSG> WirelessRouting::createCainMsg(){
     auto cainMsg = makeShared<CAINMSG>();
-    EV << "Node " << getSelfIPAddress() << " is creating a ";
+    EV << "Node " << getSelfIPAddress() << " is now creating a ";
     if(chAddr == L3Address("0.0.0.0")){
         cainMsg->setPacketType(usingIpv6 ? CAINREQ_IPv6 : CAINREQ);
         cainMsg->setDestAddr(addressType->getBroadcastAddress());
@@ -1755,17 +1757,18 @@ void WirelessRouting::handleStartOperation(LifecycleOperation *operation)
         // equal to (MESSAGE_INTERVAL - jitter), where jitter is the random value.
         if (useHelloMessages)
             scheduleAt(simTime() + helloInterval - *periodicJitter, helloMsgTimer);
-        scheduleAt(simTime() + 2, counterTimer);
+//        scheduleAt(simTime() + 0.5, counterTimer);
         scheduleAt(simTime(), chInfo);
+
     //    scheduleAt(simTime()+0.4, conncetedDevTimer);
 //        scheduleAt(simTime()+0.5, chElection);
 //        scheduleAt(simTime()+0.5, chReset);
-        if(!strcmp(this->getParentModule()->getName(),"host"))
-                scheduleAt(simTime()+2, cainTrigger);
-        scheduleAt(simTime()+ 1, endTimer);
+//        if(!strcmp(this->getParentModule()->getName(),"host"))
+        scheduleAt(simTime()+0.2, cainTrigger);
+        scheduleAt(simTime()+0.4, endTimer);
         //scheduleAt(simTime()+3.1, sendFlWeights);
 //        scheduleAt(simTime()+3, sendFlAvgWeights);
-        scheduleAt(simTime()+1, leachChDecision);
+        scheduleAt(simTime()+1.6, leachChDecision);
 
     //    scheduleAt(simTime()+0.7, cainFwdTimer);
     }
@@ -1785,11 +1788,12 @@ void WirelessRouting::handleSnooping(const Ptr<SNOOPHB>& snoop, const L3Address&
 void WirelessRouting::handleHostSnooping(const Ptr<SNOOPHB> snoop)
 {
     L3Address sourceAddr = snoop->getOriginatorAddr();
-    EV_INFO << "AODV Route Request arrived with source addr: " << sourceAddr << " originator addr: "
+    EV_INFO << "snooping arrived with source addr: " << sourceAddr << " originator addr: "
             << snoop->getOriginatorAddr() << " destination addr: " << snoop->getDestAddr() << endl;
-    EV << "Sel Ip: " << getSelfIPAddress() << endl;
+    EV << "Self Ip: " << getSelfIPAddress() << endl;
     IRoute *previousHopRoute = routingTable->findBestMatchingRoute(sourceAddr);
 
+//    endSimulation();
     Coord thisCoord = Coord(baseMobility->getCurrentPosition());
     Coord senderCoord = snoop->getMsgCoord();
     double dist = thisCoord.distance(senderCoord);
@@ -1908,6 +1912,7 @@ void WirelessRouting::handleCainFWD(const Ptr<CAINMSG>& cainmsg){
     cainmsg->setHops(++hops);
 
     if(getSelfIPAddress() == chAddr && cainmsg->getCainDestAddr() == getSelfIPAddress()){
+
 
         Coord senderCoord = cainmsg->getSenderCoord();
         dist = baseMobility->getCurrentPosition().distance(senderCoord);
@@ -3134,7 +3139,10 @@ void WirelessRouting::calculateDnnDecision(L3Address cainDest){
             dnnDist = calculateDnnDist(state, distMap->at(cainDest),rl_type);
         else
             dnnDist = calculateDnnDist(state, hopMap->at(cainDest),rl_type);
+        this->gat->calcAttention();
         double attention = this->gat->getAttention(cainDest);
+        EV << "Attention: " << attention << endl;
+        endSimulation();
         std::vector<bool> *decisionVect = network->calculateDnn(attention,dnnDist, meanDelay.dbl()*pow(10,6));
         int decision;
 

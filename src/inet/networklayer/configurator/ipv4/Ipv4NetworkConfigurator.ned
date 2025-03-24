@@ -413,7 +413,7 @@ simple Ipv4NetworkConfigurator extends NetworkConfiguratorBase
     parameters:
         @class(Ipv4NetworkConfigurator);
         @display("i=block/cogwheel");
-        xml config = default(xml("<config><interface hosts='**' address='10.x.x.x' netmask='255.x.x.x'/></config>")); // XML configuration parameters for IP address assignment and adding manual routes
+        xml config = default(xml("<config><interface hosts='**' address='145.236.0.x' netmask='255.255.255.x'/></config>")); // XML configuration parameters for IP address assignment and adding manual routes
         bool assignAddresses = default(true); // assign IP addresses to all interfaces in the network
         bool assignUniqueAddresses = default(true); // avoid using the same address and raise an error if not possible
         bool assignDisjunctSubnetAddresses = default(true); // avoid using the same address prefix and netmask on different links when assigning IP addresses to interfaces
