@@ -73,7 +73,6 @@ double Gat::calcAttention()
         e->push_back(leakrelu);
     }
 
-
     vector<double>::iterator itSoft;
     for(itSoft = e->begin(); itSoft != e->end();itSoft++){
         double tempSoft = 0.0;

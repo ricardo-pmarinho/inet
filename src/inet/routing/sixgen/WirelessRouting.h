@@ -17,6 +17,7 @@
 #define INET_ROUTING_SIXGEN_WIRELESSROUTING_H_
 
 #include <map>
+#include <omnetpp.h>
 #include "inet/common/INETDefs.h"
 #include "inet/common/oracle/Oracle.h"
 #include "inet/common/sixgenCommon/SixgenCommon.h"
@@ -34,9 +35,8 @@
 #include "inet/common/geometry/common/Coord.h"
 #include "inet/power/storage/SimpleEpEnergyStorage.h"
 #include "inet/power/management/SimpleEpEnergyManagement.h"
-#include "inet/gat/Gat.h"
-#include <omnetpp.h>
 #include "inet/dnn/dnn.h"
+#include "inet/gat/Gat.h"
 
 namespace inet {
 namespace wirelessrouting {

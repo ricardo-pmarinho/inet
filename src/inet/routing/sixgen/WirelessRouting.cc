@@ -157,12 +157,9 @@ void WirelessRouting::initialize(int stage)
         host->subscribe(linkBrokenSignal, this);
         usingIpv6 = (routingTable->getRouterIdAsGeneric().getType() == L3Address::IPv6);
         neighborBattery = new std::map<L3Address,int>();
-        //if(strcmp(this->getParentModule()->getName(),"drone")){//not a drone
-            baseMobility = check_and_cast<BonnMotionMobility*>(host->getSubmodule("mobility"));
-            energyStorage = check_and_cast<SimpleEpEnergyStorage*>(host->getSubmodule("energyStorage"));
-            energyManagement = check_and_cast<SimpleEpEnergyManagement*>(host->getSubmodule("energyManagement"));
-        //}else
-           // droneMobility = check_and_cast<MassMobility*>(host->getSubmodule("mobility"));
+        baseMobility = check_and_cast<BonnMotionMobility*>(host->getSubmodule("mobility"));
+        energyStorage = check_and_cast<SimpleEpEnergyStorage*>(host->getSubmodule("energyStorage"));
+        energyManagement = check_and_cast<SimpleEpEnergyManagement*>(host->getSubmodule("energyManagement"));
         powerThresh = par("powerThresh");
         batteryThresh = par("batteryThresh");
         numNodes = getModuleByPath("simpleNetwork")->par("numHost");
@@ -197,8 +194,8 @@ void WirelessRouting::initialize(int stage)
         fwdAck = new vector<int>();
         reqAck = new vector<int>();
         hopAck = new vector<int>();
-//        chAddr = L3Address("145.236.0.1");
-        chAddr = addressType->getUnspecifiedAddress();
+        chAddr = L3Address("145.236.0.1");
+//        chAddr = addressType->getUnspecifiedAddress();
         int mlThreshold = getModuleByPath("simpleNetwork")->par("mlThreshold");
 
         vector<float>* a0;
@@ -257,24 +254,6 @@ void WirelessRouting::initialize(int stage)
             }
         }
         network=network->createDnn(3, 2, 3, 1);
-//        droneNetwork = droneNetwork->createDnn(2,2,3,1);
-//        for(dnn* aux = network; aux->getNeuronConnections()->size()>0;
-//                aux = aux->getNeuronConnections()->operator [](0)){
-//            EV<< "Neuron aux " << aux->getNeuronName() << endl;
-//            EV<< "Connections size: " << aux->getNeuronConnections()->size() << endl;
-//            for(int j = 0; j < aux->getNeuronConnections()->size(); j++){
-//                dnn* neuron = aux->getNeuronConnections()->operator [](j);
-//                EV<< "Neuron " << neuron->getNeuronName() << endl;
-//                EV<< "Connections size: " << neuron->getNeuronConnections()->size() << endl;
-//                for(int k = 0; k < neuron->getNeuronConnections()->size(); k++){
-//                    dnn* neuronProx = neuron->getNeuronConnections()->operator [](k);
-//                    EV<< "Neuron prox " << neuronProx->getNeuronName() << endl;
-//                    EV <<"Weight: " << neuron->getNeuronWeights()->operator [](k) << endl;
-//                }
-//            }
-//        }
-//        EV << "Decision: " << network->calculateDnn(3, 1.2) << endl;
-
     }
     else if (stage == INITSTAGE_APPLICATION_LAYER){
         oracle_ = check_and_cast<Oracle*>(getSimulation()->getModuleByPath("Oracle"));
@@ -1793,7 +1772,6 @@ void WirelessRouting::handleHostSnooping(const Ptr<SNOOPHB> snoop)
     EV << "Self Ip: " << getSelfIPAddress() << endl;
     IRoute *previousHopRoute = routingTable->findBestMatchingRoute(sourceAddr);
 
-//    endSimulation();
     Coord thisCoord = Coord(baseMobility->getCurrentPosition());
     Coord senderCoord = snoop->getMsgCoord();
     double dist = thisCoord.distance(senderCoord);
@@ -1925,7 +1903,6 @@ void WirelessRouting::handleCainFWD(const Ptr<CAINMSG>& cainmsg){
 
         recCainFwdMsg++;
         emit(recCainFwdMsgSignal,recCainFwdMsg);
-
 
         simtime_t arrivalTime = simTime();
         delay=arrivalTime-cainmsg->getTimeInit();
@@ -3141,8 +3118,6 @@ void WirelessRouting::calculateDnnDecision(L3Address cainDest){
             dnnDist = calculateDnnDist(state, hopMap->at(cainDest),rl_type);
         this->gat->calcAttention();
         double attention = this->gat->getAttention(cainDest);
-        EV << "Attention: " << attention << endl;
-        endSimulation();
         std::vector<bool> *decisionVect = network->calculateDnn(attention,dnnDist, meanDelay.dbl()*pow(10,6));
         int decision;
 

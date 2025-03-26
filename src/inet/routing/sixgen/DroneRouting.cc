@@ -137,6 +137,7 @@ void DroneRouting::initialize(int stage)
         hopAck = new vector<int>();
         int mlThreshold = getModuleByPath("simpleNetwork")->par("mlThreshold");
 
+        gat = new Gat();
         vector<float>* a0;
         vector<float>* a1;
         a0 = new vector<float>();
@@ -192,7 +193,6 @@ void DroneRouting::initialize(int stage)
                 droneQMatrix[i][j]=0;
             }
         }
-        network=network->createDnn(3, 2, 3, 1);
         droneNetwork = droneNetwork->createDnn(2,2,3,1);
 
     }
@@ -238,8 +238,8 @@ void DroneRouting::handleMessageWhenUp(cMessage *msg)
             expungeRoutes();
         else if(msg == droneTimer){
             EV << "Drone timer" << endl;
-            auto droneMsg = createDroneMsg();
-            sendHeartBeatpkg(droneMsg,droneMsg->getDestAddr(),droneMsg->getHopCount(),0);
+//            auto droneMsg = createDroneMsg();
+//            sendHeartBeatpkg(droneMsg,droneMsg->getDestAddr(),droneMsg->getHopCount(),0);
             scheduleAt(simTime()+5, droneTimer);
         }
         else if (msg == counterTimer) {
@@ -555,11 +555,11 @@ const Ptr<SNOOPHB> DroneRouting::createSnoopMsg()
     return snoopPkg;
 }
 
-const Ptr<DRONEMSG> DroneRouting::createDroneMsg(){
+const Ptr<DRONEMSG> DroneRouting::createDroneMsg(L3Address dest){
     auto droneMsg = makeShared<DRONEMSG>();
     droneMsg->setPacketType(usingIpv6 ? DRONE_IPv6: DRONE);
     droneMsg->setChunkLength(usingIpv6 ? B(48) : B(24));
-    droneMsg->setDestAddr(addressType->getBroadcastAddress());
+    droneMsg->setDestAddr(dest);
     droneMsg->setSourceAddr(getSelfIPAddress());
     droneMsg->setSenderCoord(baseMobility->getCurrentPosition());
     droneMsg->setHopCount(1);
@@ -578,12 +578,80 @@ void DroneRouting::handleSnooping(const Ptr<SNOOPHB>& snoop, const L3Address& so
         return;
 }
 
+void DroneRouting::handleCainFWD(const Ptr<CAINMSG>& cainmsg){
+    EV << "Destined to: " << cainmsg->getDestAddr() << ", initiated by: " << cainmsg->getOriginatorAddr() <<
+            ", sent by: " << cainmsg->getSourceAddr() << endl;
+    EV << "CAIN destination: " << cainmsg->getCainDestAddr() << endl;
+    EV << "Self ipAddr: " << getSelfIPAddress() << endl;
+
+
+    calcDelayMean(cainmsg->getTimeInit());
+
+    auto droneMsg = createDroneMsg(addressType->getBroadcastAddress());
+    if(this->getSelfIPAddress() == cainmsg->getDestAddr()){
+        EV << "Drone receiving message" << endl;
+        Coord ueCoord = cainmsg->getSenderCoord();
+        Coord thisCoord = baseMobility->getCurrentPosition();
+        droneDist = thisCoord.distance(ueCoord);
+        emit(droneDistSignal,droneDist);
+
+        recDroneMsg++;
+        emit(recDroneMsgSignal,recDroneMsg);
+
+        if(satelliteAddr.isUnspecified()){
+            int droneDistMapsize = droneDistMap->size();
+            if(droneDistMapsize!=0){
+                this->gat->calcAttention();
+                map<L3Address,double>::iterator it = droneDistMap->begin();
+                for(;it != droneDistMap->end(); it++){
+                    bool decision = calculateDroneDecision(it->first);
+                    decision = true;
+                    if(decision){
+                        droneMsg->setDestAddr(it->first);
+                        break;
+                    }
+                }
+            }
+        }else
+            droneMsg->setDestAddr(satelliteAddr);
+    }
+    sendHeartBeatpkg(droneMsg,droneMsg->getDestAddr(),1,0);
+}
+
+
+void DroneRouting::handleDroneMsg(const Ptr<DRONEMSG>& droneMsg){
+    EV << "Drone message arriving with address: " << droneMsg->getSourceAddr() << endl;
+    EV << "This addr: " << getSelfIPAddress() << endl;
+    EV << "Destination: " << droneMsg->getDestAddr() << endl;
+    endSimulation();
+    if(this->getSelfIPAddress() == droneMsg->getDestAddr()){
+        if(satelliteAddr.isUnspecified()){
+            int droneDistMapsize = droneDistMap->size();
+            if(droneDistMapsize!=0){
+                this->gat->calcAttention();
+                map<L3Address,double>::iterator it = droneDistMap->begin();
+                for(;it != droneDistMap->end(); it++){
+                    bool decision = calculateDroneDecision(it->first);
+                    if(decision){
+                        droneMsg->setDestAddr(it->first);
+                        break;
+                    }
+                }
+            }
+        }else
+            droneMsg->setDestAddr(satelliteAddr);
+    }
+}
+
 void DroneRouting::handleDroneSnooping(const Ptr<SNOOPHB> snoop)
 {
+    EV << "Drone snoop message arriving with address: " << snoop->getOriginatorAddr() << endl;
+    EV << "This addr: " << getSelfIPAddress() << endl;
     Coord thisCoord = Coord(baseMobility->getCurrentPosition());
     Coord senderCoord = snoop->getMsgCoord();
     double dist = thisCoord.distance(senderCoord);
     droneDistMap->operator [](snoop->getOriginatorAddr()) = dist;
+    this->gat->insertGatNeighbor(snoop->getOriginatorAddr(),dist);
     return;
 }
 
@@ -591,56 +659,6 @@ void DroneRouting::handleSatelliteSnooping(const Ptr<SNOOPHB> snoop)
 {
     satelliteAddr = snoop->getOriginatorAddr();
     return;
-}
-
-void DroneRouting::sendCainMsg(const Ptr<CAINMSG>& cainmsg, unsigned int timeToLive, double delay){
-    EV << "sending CAIN ";
-    int type = cainmsg->getPacketType();
-    switch(type){
-    case CAINREQ:
-    case CAINREQ_IPv6:
-        EV << "REQ ";
-        break;
-    case CAINRESP:
-    case CAINRESP_IPv6:
-        EV << "RESP ";
-        break;
-    case CAINFWD:
-    case CAINFWD_IPv6:
-        EV << "FWD ";
-        break;
-    case NEWFWD:
-    case NEWFWD_IPv6:
-        EV << "NEW FDW ";
-        break;
-    case CAINHOP:
-    case CAINHOP_IPv6:
-        EV << "HOP ";
-        break;
-    case CAINERR:
-    case CAINERR_IPv6:
-        EV << "ERR ";
-        break;
-    case CAINACK:
-    case CAINACK_IPv6:
-        EV << "ACK ";
-        break;
-    case LAR:
-    case LAR_IPv6:
-        EV << "LAR ";
-        break;
-    case SPR:
-    case SPR_IPv6:
-        EV << "SPRAY ";
-        break;
-    case BRAP:
-    case BRAP_IPv6:
-        EV << "BRAP ";
-        break;
-    }
-    EV << "message." << endl;
-
-    sendHeartBeatpkg(cainmsg,addressType->getBroadcastAddress(),timeToLive,delay);
 }
 
 bool DroneRouting::hasOngoingRouteDiscovery(const L3Address& target)
@@ -939,48 +957,6 @@ void DroneRouting::handleStartOperation(LifecycleOperation *operation)
     scheduleAt(simTime() + 1.2, counterTimer);
 }
 
-void DroneRouting::handleCainFWD(const Ptr<CAINMSG>& cainmsg){
-    EV << "Destined to: " << cainmsg->getDestAddr() << ", initiated by: " << cainmsg->getOriginatorAddr() <<
-            ", sent by: " << cainmsg->getSourceAddr() << endl;
-    EV << "CAIN destination: " << cainmsg->getCainDestAddr() << endl;
-    EV << "Self ipAddr: " << getSelfIPAddress() << endl;
-
-    calcDelayMean(cainmsg->getTimeInit());
-
-    if(this->getSelfIPAddress() == cainmsg->getDestAddr()){
-        EV << "Drone receiving message" << endl;
-        Coord ueCoord = cainmsg->getSenderCoord();
-        Coord thisCoord = baseMobility->getCurrentPosition();
-        droneDist = thisCoord.distance(ueCoord);
-        emit(droneDistSignal,droneDist);
-
-        recDroneMsg++;
-        emit(recDroneMsgSignal,recDroneMsg);
-
-        cainmsg->setSourceAddr(getSelfIPAddress());
-        cainmsg->setDestAddr(addressType->getBroadcastAddress());
-        if(satelliteAddr.isUnspecified()){
-            int droneDistMapsize = droneDistMap->size();
-            if(droneDistMapsize!=0){
-                map<L3Address,double>::iterator it = droneDistMap->begin();
-                for(;it != droneDistMap->end(); it++){
-                    bool decision = calculateDroneDecision(it->first);
-                    if(decision){
-                        cainmsg->setCainDestAddr(it->first);
-                        sendCainMsg(cainmsg,1,0);
-                        break;
-                    }
-                }
-            }else{
-                sendCainMsg(cainmsg,1,0);
-            }
-        }else{
-            cainmsg->setCainDestAddr(satelliteAddr);
-            sendCainMsg(cainmsg, 1, 0);
-        }
-    }
-}
-
 void DroneRouting::calcDelayMean(simtime_t msgInit){
     simtime_t timeDiff = simTime() - msgInit;
     meanDelay*=qtdMsg;
@@ -989,16 +965,6 @@ void DroneRouting::calcDelayMean(simtime_t msgInit){
 
 }
 
-
-void DroneRouting::handleDroneMsg(const Ptr<DRONEMSG>& droneMsg){
-    EV << "Drone message arriving with address: " << droneMsg->getSourceAddr() << endl;
-    EV << "This addr: " << getSelfIPAddress() << endl;
-
-    Coord thisCoord = Coord(baseMobility->getCurrentPosition());
-    Coord senderCoord = droneMsg->getSenderCoord();
-    double dist = thisCoord.distance(senderCoord);
-    droneDistMap->operator [](droneMsg->getSourceAddr()) = dist;
-}
 void DroneRouting::updateRoutingTable(IRoute *route, const L3Address& nextHop, unsigned int hopCount, bool hasValidDestNum, unsigned int destSeqNum, bool isActive, simtime_t lifeTime)
 {
     EV_DETAIL << "Updating existing route: " << route << endl;
@@ -1237,35 +1203,43 @@ bool DroneRouting::calculateDroneDecision(L3Address cainDest){
     for(int i = 0; i<100; i++){
         int state = get_drone_coverage_state(cainDest);
         double dnnDist;
-        if(rl_type == "Euclidean1" || rl_type == "Euclidean2" ||
-                rl_type == "Euclidean3")
-            dnnDist = calculateDnnDist(state, droneDistMap->at(cainDest),rl_type);
-        else
-            dnnDist = calculateDnnDist(state, hopMap->at(cainDest),rl_type);
+        dnnDist = calculateDnnDist(state, droneDistMap->at(cainDest),rl_type);
+        double attention = this->gat->getAttention(cainDest);
 
+        std::vector<bool> *decisionVect = droneNetwork->calculateDroneDnn(attention,dnnDist);
         int decision;
-
-        if(state == 1){//true
-            if(dnnDist <= 0.5)//true-true
+        if(decisionVect->operator [](0)){//true
+            if(decisionVect->operator [](1))//true-true
                 decision=3;
             else//true-false
                 decision=2;
-            sendDecision = true;
-        }else if(state == 2){//false
-            if(dnnDist <= 0.5){//false-true
-                decision=2;
-                sendDecision = true;
-            }else{//false-false
-                decision=1;
-                sendDecision = true;
-            }
-        }else{
-            if(dnnDist <= 0.5)//false-true
+        }else{//false
+            if(decisionVect->operator [](1))//false-true
                 decision=1;
             else//false-false
                 decision=0;
-            sendDecision = false;
         }
+//        if(state == 1){//true
+//            if(dnnDist <= 0.5)//true-true
+//                decision=3;
+//            else//true-false
+//                decision=2;
+//            sendDecision = true;
+//        }else if(state == 2){//false
+//            if(dnnDist <= 0.5){//false-true
+//                decision=2;
+//                sendDecision = true;
+//            }else{//false-false
+//                decision=1;
+//                sendDecision = true;
+//            }
+//        }else{
+//            if(dnnDist <= 0.5)//false-true
+//                decision=1;
+//            else//false-false
+//                decision=0;
+//            sendDecision = false;
+//        }
         calculate_drone_coverage_reward(state, decision, cainDest);
         calculate_drone_q_matrix();
         float result = droneQMatrix[state][decision];

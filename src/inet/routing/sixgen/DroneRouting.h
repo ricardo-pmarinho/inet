@@ -17,6 +17,7 @@
 #define INET_ROUTING_SIXGEN_DRONEROUTING_H_
 
 #include <map>
+#include <omnetpp.h>
 #include "inet/common/INETDefs.h"
 #include "inet/common/oracle/Oracle.h"
 #include "inet/common/sixgenCommon/SixgenCommon.h"
@@ -34,8 +35,8 @@
 #include "inet/common/geometry/common/Coord.h"
 #include "inet/power/storage/SimpleEpEnergyStorage.h"
 #include "inet/power/management/SimpleEpEnergyManagement.h"
-#include <omnetpp.h>
 #include "inet/dnn/dnn.h"
+#include "inet/gat/Gat.h"
 
 namespace inet {
 namespace dronerouting {
@@ -52,7 +53,6 @@ private:
     SimpleEpEnergyStorage* energyStorage = nullptr;
     SimpleEpEnergyManagement* energyManagement = nullptr;
     std::string rl_type=getModuleByPath("simpleNetwork")->par("rl_type");
-    dnn* network;
     dnn* droneNetwork;
     int chBattery = 0;
     int newChBattery = 0;
@@ -126,6 +126,7 @@ private:
      * Stores the distance to the node's CH
      * */
     double chDist;
+    Gat* gat;
 
     map<pair<L3Address,L3Address>,pair<L3Address,int>> *routes;//<<originator,destination>,<next_hop,battery>>
     map<pair<L3Address,L3Address>,L3Address> *revRoute;//<<originator,destination>,prev_hop>
@@ -367,30 +368,9 @@ private:
 //
 //    /* Control packet creators */
     const Ptr<SNOOPHB> createSnoopMsg();
-    const Ptr<RESPHB> createRespHBMsg(L3Address dest);
-    const Ptr<CAINMSG> createCainMsg();
-    const Ptr<CAINMSG> createCainRespMsg(L3Address dest, L3Address originator);
-    const Ptr<CAINMSG> createCainFwdMsg(L3Address dest);
-    const Ptr<CAINMSG> createCainReqMsg(L3Address dest);
-    const Ptr<CAINMSG> createCainHopMsg(L3Address dest);
-    const Ptr<CAINMSG> createCainErrMsg(L3Address dest, L3Address originator);
-    const Ptr<CAINMSG> createCainAck(L3Address dest,heartBeatType cainMsgType,int seqNum);
     const Ptr<CAINMSG> createAckTimer(heartBeatType cainMsgType,int seqNum);
-    const Ptr<CAINMSG> createCainRREQ();
-    const Ptr<CAINMSG> createSCMSG();
-    const Ptr<CAINMSG> createCainRREP(L3Address nextHop,L3Address rreqDest,L3Address cainSource
-            ,int battery);
-    const Ptr<CAINMSG> createLARMSG();
-    const Ptr<CAINMSG> createSPRAYMSG(int numNodes);
-    const Ptr<CAINMSG> createBRAPMSG();
-    const Ptr<DRONEMSG> createDroneMsg();
-    const Ptr<ANTENNA> createAntennaMsg();
-    const Ptr<FLWEIGHT> createWeightMsg(std::vector<float>* weights);
-//    const Ptr<RrepAck> createRREPACK();
+    const Ptr<DRONEMSG> createDroneMsg(L3Address dest);
     const Ptr<SNOOPHB> createHelloMessage();
-//    const Ptr<Rreq> createRREQ(const L3Address& destAddr);
-//    const Ptr<Rrep> createRREP(const Ptr<Rreq>& rreq, IRoute *destRoute, IRoute *originatorRoute, const L3Address& sourceAddr);
-//    const Ptr<Rrep> createGratuitousRREP(const Ptr<Rreq>& rreq, IRoute *originatorRoute);
     const Ptr<Rerr> createRERR(const std::vector<UnreachableNode>& unreachableNodes);
     L3Address findHopRL();
     const Ptr<CHDEF> createChDefMsg();
@@ -402,7 +382,6 @@ private:
     void handleCainFWD(const Ptr<CAINMSG>& cainmsg);
     void handleDroneMsg(const Ptr<DRONEMSG>& droneMsg);
     void sendSnooping(const Ptr<SNOOPHB>& snoop, unsigned int timeToLive);
-    void sendCainMsg(const Ptr<CAINMSG>& cainmsg, unsigned int timeToLive,double delay);
 //    /* Control Packet forwarders */
 //    void forwardRREP(const Ptr<Rrep>& rrep, const L3Address& destAddr, unsigned int timeToLive);
 //    void forwardRREQ(const Ptr<Rreq>& rreq, unsigned int timeToLive);
