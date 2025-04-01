@@ -905,12 +905,8 @@ void SatelliteRouting::handleCainFWD(const Ptr<CAINMSG>& cainmsg){
 void SatelliteRouting::handleDroneMsg(const Ptr<DRONEMSG>& droneMsg){
     EV << "Drone message arriving with address: " << droneMsg->getSourceAddr() << endl;
     EV << "This addr: " << getSelfIPAddress() << endl;
-        //it is a regular node: the strcmp returns 1
-    Coord thisCoord = Coord(baseMobility->getCurrentPosition());
-    Coord senderCoord = droneMsg->getSenderCoord();
-    double dist = thisCoord.distance(senderCoord);
-    droneAddr = droneMsg->getSourceAddr();
-
+    auto satMsg = createSatMsg();
+    sendHeartBeatpkg(satMsg,addressType->getBroadcastAddress(),1,0);
 }
 
 void SatelliteRouting::handleSnooping(const Ptr<SNOOPHB>& snoop, const L3Address& sourceAddr)
@@ -934,6 +930,7 @@ void SatelliteRouting::handleSatelliteSnooping(const Ptr<SNOOPHB> snoop)
 
 void SatelliteRouting::handleAntennaSnooping(const Ptr<SNOOPHB> snoop)
 {
+    EV << "Satellite ipaddress: " << this->getSelfIPAddress() << endl;
     antennaAddr = snoop->getOriginatorAddr();
     return;
 }

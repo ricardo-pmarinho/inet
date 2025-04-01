@@ -177,9 +177,6 @@ simple satelliteRouting like IApp
         @signal[recSatMsgSignal](type=long);
         @statistic[recSatMsgSignal](title="received fwd sat message";record=vector,count,max,last;interpolationmode=none);
         
-        @signal[droneDistSignal](type=double);
-        @statistic[droneDistSignal](title="Distance from sender to drone";record=count,max,last;interpolationmode=none);
-        
         @signal[satDistSignal](type=double);
         @statistic[satDistSignal](title="Distance from sender to satellite";record=count,max,last;interpolationmode=none);
         

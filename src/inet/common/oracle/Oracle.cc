@@ -236,8 +236,8 @@ L3Address Oracle::getCainDestination(L3Address nodeAddr, int numNode){
                 std::advance(it,index);
             }
         }
-        return L3Address("0.0.0.0");
     }
+    return L3Address("0.0.0.0");
 }
 
 void Oracle::printDevsChMap(){
@@ -339,14 +339,6 @@ void Oracle::checkShutdownTime(int numNodes){
      }
 }
 
-void Oracle::shutDownSimulation(){
-
-    simulationEnd = lround(simTime().dbl());
-
-    emit(simulationEndSignal,simulationEnd);
-    endSimulation();
-}
-
 void Oracle::insertRecNode(L3Address nodeAddr){
     this->recNodes->operator [](nodeAddr)=true;
 }
@@ -365,16 +357,10 @@ void Oracle::checkShutdownNodes(){
         if(!it->second)
             nodeCount++;
     }
-    if(nodeCount >=0.6*recNodes->size()){
+    if(nodeCount >=0.9*recNodes->size()){
         simulationEnd = lround(simTime().dbl());
 
         emit(simulationEndSignal,simulationEnd);
-
-        startNodesNum = this->startNodes->size();
-
-        EV << "node started: " << startNodesNum << endl;
-
-//         emit(startNodeSignal,startNodesNum);
         endSimulation();
     }
 }

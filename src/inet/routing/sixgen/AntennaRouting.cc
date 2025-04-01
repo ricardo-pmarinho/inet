@@ -103,8 +103,7 @@ void AntennaRouting::initialize(int stage)
         sentAntennaMsgSignal = registerSignal("sentAntennaMsgSignal");
         recDroneMsgSignal = registerSignal("recDroneMsgSignal");
         recSatMsgSignal = registerSignal("recSatMsgSignal");
-        droneDistSignal = registerSignal("droneDistSignal");
-        satDistSignal = registerSignal("satDistSignal");
+        antennaDistSignal = registerSignal("antennaDistSignal ");
 
     }
     else if (stage == INITSTAGE_ROUTING_PROTOCOLS) {
@@ -850,6 +849,12 @@ void AntennaRouting::processPacket(Packet *packet)
 //            handleSnooping(CHK(dynamicPtrCast<SNOOPHB>(hbPacket->dupShared())), sourceAddr);
 //            delete packet;
 //            return;
+        case SAT:
+        case SAT_IPv6:
+            EV << "Satellite message arriving" << endl;
+            handleSatelliteMsg(CHK(dynamicPtrCast<SATMSG>(hbPacket->dupShared())));
+            delete packet;
+            return;
         case CAINFWD:
         case CAINFWD_IPv6:
             EV << "CAIN FWD message arrived" << endl;
@@ -903,7 +908,7 @@ void AntennaRouting::handleStartOperation(LifecycleOperation *operation)
     // equal to (MESSAGE_INTERVAL - jitter), where jitter is the random value.
     if (useHelloMessages)
         scheduleAt(simTime() + helloInterval - *periodicJitter, helloMsgTimer);
-    scheduleAt(simTime() + 2, counterTimer);
+    scheduleAt(simTime(), counterTimer);
     scheduleAt(simTime()+ 1, endTimer);
 }
 
@@ -960,6 +965,17 @@ void AntennaRouting::handleCainFWD(const Ptr<CAINMSG>& cainmsg){
     int hops=cainmsg->getHops();
     cainmsg->setHops(++hops);
 
+}
+
+void AntennaRouting::handleSatelliteMsg(const Ptr<SATMSG>& satMsg)
+{
+    EV << "Satellite message arriving with address: " << satMsg->getSourceAddr() << endl;
+    EV << "This addr: " << getSelfIPAddress() << endl;
+        //it is a regular node: the strcmp returns 1
+    Coord thisCoord = Coord(baseMobility->getCurrentPosition());
+    Coord senderCoord = satMsg->getSenderCoord();
+    double dist = thisCoord.distance(senderCoord);
+    emit(antennaDistSignal,dist);
 }
 
 void AntennaRouting::calcDelayMean(simtime_t msgInit){

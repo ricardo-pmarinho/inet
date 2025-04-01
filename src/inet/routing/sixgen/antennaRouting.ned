@@ -177,11 +177,8 @@ simple antennaRouting like IApp
         @signal[recSatMsgSignal](type=long);
         @statistic[recSatMsgSignal](title="received fwd sat message";record=vector,count,max,last;interpolationmode=none);
         
-        @signal[droneDistSignal](type=double);
-        @statistic[droneDistSignal](title="Distance from sender to drone";record=count,max,last;interpolationmode=none);
-        
-        @signal[satDistSignal](type=double);
-        @statistic[satDistSignal](title="Distance from sender to satellite";record=count,max,last;interpolationmode=none);
+        @signal[antennaDistSignal](type=double);
+        @statistic[antennaDistSignal](title="Distance from sender to antenna";record=count,max,last;interpolationmode=none);
         
         @signal[pheromoneSignal](type=long);
         @statistic[pheromoneSignal](title="received fwd drone message";record=vector,count,max,last;interpolationmode=none);

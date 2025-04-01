@@ -236,12 +236,12 @@ void DroneRouting::handleMessageWhenUp(cMessage *msg)
             sendHelloMessagesIfNeeded();
         else if (msg == expungeTimer)
             expungeRoutes();
-        else if(msg == droneTimer){
-            EV << "Drone timer" << endl;
-//            auto droneMsg = createDroneMsg();
-//            sendHeartBeatpkg(droneMsg,droneMsg->getDestAddr(),droneMsg->getHopCount(),0);
-            scheduleAt(simTime()+5, droneTimer);
-        }
+//        else if(msg == droneTimer){
+//            EV << "Drone timer" << endl;
+////            auto droneMsg = createDroneMsg();
+////            sendHeartBeatpkg(droneMsg,droneMsg->getDestAddr(),droneMsg->getHopCount(),0);
+//            scheduleAt(simTime()+5, droneTimer);
+//        }
         else if (msg == counterTimer) {
             auto snoopPkg = createSnoopMsg();
             sendSnooping(snoopPkg, 1);
@@ -587,8 +587,8 @@ void DroneRouting::handleCainFWD(const Ptr<CAINMSG>& cainmsg){
 
     calcDelayMean(cainmsg->getTimeInit());
 
-    auto droneMsg = createDroneMsg(addressType->getBroadcastAddress());
     if(this->getSelfIPAddress() == cainmsg->getDestAddr()){
+        auto droneMsg = createDroneMsg(addressType->getBroadcastAddress());
         EV << "Drone receiving message" << endl;
         Coord ueCoord = cainmsg->getSenderCoord();
         Coord thisCoord = baseMobility->getCurrentPosition();
@@ -614,8 +614,8 @@ void DroneRouting::handleCainFWD(const Ptr<CAINMSG>& cainmsg){
             }
         }else
             droneMsg->setDestAddr(satelliteAddr);
+        sendHeartBeatpkg(droneMsg,addressType->getBroadcastAddress(),1,0);
     }
-    sendHeartBeatpkg(droneMsg,droneMsg->getDestAddr(),1,0);
 }
 
 
@@ -623,7 +623,8 @@ void DroneRouting::handleDroneMsg(const Ptr<DRONEMSG>& droneMsg){
     EV << "Drone message arriving with address: " << droneMsg->getSourceAddr() << endl;
     EV << "This addr: " << getSelfIPAddress() << endl;
     EV << "Destination: " << droneMsg->getDestAddr() << endl;
-    endSimulation();
+    if(this->getSelfIPAddress() == L3Address("145.236.0.6"))
+        satelliteAddr = L3Address("145.236.0.4");
     if(this->getSelfIPAddress() == droneMsg->getDestAddr()){
         if(satelliteAddr.isUnspecified()){
             int droneDistMapsize = droneDistMap->size();
@@ -638,8 +639,10 @@ void DroneRouting::handleDroneMsg(const Ptr<DRONEMSG>& droneMsg){
                     }
                 }
             }
-        }else
+        }else{
             droneMsg->setDestAddr(satelliteAddr);
+        }
+        sendHeartBeatpkg(droneMsg,addressType->getBroadcastAddress(),1,0);
     }
 }
 
@@ -1219,31 +1222,9 @@ bool DroneRouting::calculateDroneDecision(L3Address cainDest){
             else//false-false
                 decision=0;
         }
-//        if(state == 1){//true
-//            if(dnnDist <= 0.5)//true-true
-//                decision=3;
-//            else//true-false
-//                decision=2;
-//            sendDecision = true;
-//        }else if(state == 2){//false
-//            if(dnnDist <= 0.5){//false-true
-//                decision=2;
-//                sendDecision = true;
-//            }else{//false-false
-//                decision=1;
-//                sendDecision = true;
-//            }
-//        }else{
-//            if(dnnDist <= 0.5)//false-true
-//                decision=1;
-//            else//false-false
-//                decision=0;
-//            sendDecision = false;
-//        }
         calculate_drone_coverage_reward(state, decision, cainDest);
         calculate_drone_q_matrix();
         float result = droneQMatrix[state][decision];
-        //droneNetwork->updateDnn(result,decisionVect);
     }
     return sendDecision;
 }

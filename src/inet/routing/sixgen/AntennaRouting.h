@@ -84,8 +84,7 @@ private:
     simsignal_t sentAntennaMsgSignal;
     simsignal_t recDroneMsgSignal;
     simsignal_t recSatMsgSignal;
-    simsignal_t droneDistSignal;
-    simsignal_t satDistSignal;
+    simsignal_t antennaDistSignal;
     long numConnectedDevs = 0;
     long recCainFwdMsg = 0;
     double dist = 0;
@@ -96,8 +95,7 @@ private:
     long sentAntennaMsg=0;
     long recDroneMsg=0;
     long recSatMsg=0;
-    double droneDist = 0;
-    double satDist = 0;
+    double antennaDist = 0;
 
     simtime_t meanDelay=0;
     unsigned int qtdMsg=0;
@@ -246,6 +244,7 @@ private:
     void handleCainFWD(const Ptr<CAINMSG>& cainmsg);
     void handleAntennaMsg(const Ptr<ANTENNA>& antennaMsg);
     void handleDroneMsg(const Ptr<DRONEMSG>& droneMsg);
+    void handleSatelliteMsg(const Ptr<SATMSG>& satMsg);
 //
 //    /* Control Packet sender methods */
     void sendSnooping(const Ptr<SNOOPHB>& snoop, unsigned int timeToLive);
