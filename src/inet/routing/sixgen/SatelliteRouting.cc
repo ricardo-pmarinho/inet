@@ -91,11 +91,7 @@ void SatelliteRouting::initialize(int stage)
         if (useHelloMessages)
             helloMsgTimer = new cMessage("HelloMsgTimer");
 
-        recCainFwdMsgSignal = registerSignal("recCainFwdMsgSignal");
-        distSignal = registerSignal("distSignal");
-        recDroneMsgSignal = registerSignal("recDroneMsgSignal");
         recSatMsgSignal = registerSignal("recSatMsgSignal");
-        droneDistSignal = registerSignal("droneDistSignal");
         satDistSignal = registerSignal("satDistSignal");
 
     }
@@ -906,6 +902,13 @@ void SatelliteRouting::handleDroneMsg(const Ptr<DRONEMSG>& droneMsg){
     EV << "Drone message arriving with address: " << droneMsg->getSourceAddr() << endl;
     EV << "This addr: " << getSelfIPAddress() << endl;
     auto satMsg = createSatMsg();
+    Coord ueCoord = droneMsg->getSenderCoord();
+    Coord thisCoord = baseMobility->getCurrentPosition();
+    satDist = thisCoord.distance(ueCoord);
+    emit(satDistSignal,satDist);
+
+    recSatMsg++;
+    emit(recSatMsgSignal,recSatMsg);
     sendHeartBeatpkg(satMsg,addressType->getBroadcastAddress(),1,0);
 }
 
@@ -949,8 +952,6 @@ void SatelliteRouting::handleAntennaMsg(const Ptr<ANTENNA>& antennaMsg){
     if(strcmp(this->getParentModule()->getName(),"antenna")){
         //it is a regular node: the strcmp returns 1
         antennaAddr = antennaMsg->getSourceAddr();
-        recAntennaMsg++;
-        emit(recAntennaMsgSignal,recAntennaMsg);
     }
 }
 

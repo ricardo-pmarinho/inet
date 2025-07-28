@@ -29,7 +29,7 @@ public:
     void insertGatNeighbor(L3Address neighAddr, double dist);
     void cleanGatNeighbors();
     void printGat();
-    double calcAttention();
+    void calcAttention();
     double getAttention(L3Address cainDest);
 };
 

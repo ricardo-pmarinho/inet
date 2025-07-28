@@ -41,6 +41,7 @@ network simpleNetwork
         string networkType;
         bool backoffEnabled;
         bool mlEnable;
+        bool gatEnable = default(true);
         string rl_type;
         int mlThreshold = default(300);
         double alphaRl = default(0.5);

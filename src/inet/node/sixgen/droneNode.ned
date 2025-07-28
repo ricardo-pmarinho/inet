@@ -17,6 +17,7 @@ package inet.node.sixgen;
 
 import inet.node.inet.WirelessHost;
 import inet.routing.sixgen.droneRouting;
+import inet.visualizer.integrated.IntegratedOsgVisualizer;
 
 module droneNode extends WirelessHost{
     parameters:
@@ -28,6 +29,7 @@ module droneNode extends WirelessHost{
 		routing : droneRouting{
             @display("p=50,50");
         }
+        visualizer: IntegratedOsgVisualizer;
     connections:
         routing.socketOut --> at.in++;
         routing.socketIn <-- at.out++;

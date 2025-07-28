@@ -50,7 +50,7 @@ void Gat::insertGatNeighbor(L3Address neighAddr, double dist)
     }
 }
 
-double Gat::calcAttention()
+void Gat::calcAttention()
 {
     if(!this->alpha->empty())
         this->alpha->clear(); //restart alpha for new computations
@@ -69,7 +69,8 @@ double Gat::calcAttention()
         h = neighDists->at(i)*(*it);
         double leakrelu = tempE + (a->at(i)*h);
         if(leakrelu < 0)
-            leakrelu*=0.3;//default alpha argument for activation function
+            leakrelu*=0.9;//default alpha argument for activation function
+        leakrelu*=1.5;
         e->push_back(leakrelu);
     }
 
@@ -81,7 +82,6 @@ double Gat::calcAttention()
         }
         this->alpha->push_back(*itSoft/tempSoft);
     }
-    return 0.0;
 }
 
 double Gat::getAttention(L3Address cainDest)

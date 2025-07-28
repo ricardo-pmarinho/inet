@@ -48,8 +48,8 @@ class INET_API DroneRouting : public RoutingProtocolBase, public NetfilterBase::
 {
 private:
 
-    BonnMotionMobility* baseMobility = nullptr;
-    MassMobility* droneMobility = nullptr;
+//    BonnMotionMobility* baseMobility = nullptr;
+    MassMobility* baseMobility = nullptr;
     SimpleEpEnergyStorage* energyStorage = nullptr;
     SimpleEpEnergyManagement* energyManagement = nullptr;
     std::string rl_type=getModuleByPath("simpleNetwork")->par("rl_type");
@@ -133,65 +133,16 @@ private:
 
 //    std::string netType;
 
-    simsignal_t cainMsgSignal;
-    simsignal_t connectedDevsSignal;
-    simsignal_t recCainFwdMsgSignal;
-    simsignal_t sentCainFwdMsgSignal;
-    simsignal_t recCainReqMsgSignal;
-    simsignal_t sentCainReqMsgSignal;
-    simsignal_t recCainRespMsgSignal;
-    simsignal_t sentCainRespMsgSignal;
-    simsignal_t recCainHopMsgSignal;
-    simsignal_t sentCainHopMsgSignal;
-    simsignal_t recCainErrMsgSignal;
-    simsignal_t sentCainErrMsgSignal;
-    simsignal_t sentCainRREQMsgSignal;
-    simsignal_t recCainRREQMsgSignal;
-    simsignal_t sentCainRREPMsgSignal;
-    simsignal_t recCainRREPMsgSignal;
-    simsignal_t recCainRREQFwdMsgSignal;
-    simsignal_t sentCainRREQFwdMsgSignal;
+
     simsignal_t recLarMsgSignal;
     simsignal_t sentLarMsgSignal;
-    simsignal_t distSignal;
-    simsignal_t timeSignal;
-    simsignal_t powerThreshSignal;
-    simsignal_t batteryDecaySignal;
     simsignal_t recSprMsgSignal;
     simsignal_t sentSprMsgSignal;
     simsignal_t recBrapMsgSignal;
     simsignal_t sentBrapMsgSignal;
-    simsignal_t nodeEndingSignal;
-    simsignal_t hopCountSignal;
-    simsignal_t sendProbSignal;
-    simsignal_t distMapSizeSignal;
-    simsignal_t respMapSizeSignal;
-    simsignal_t recWeightMsgSignal;
-    simsignal_t recAntennaMsgSignal;
-    simsignal_t recFwdAntennaMsgSignal;
     simsignal_t recDroneMsgSignal;
-    simsignal_t recSatMsgSignal;
     simsignal_t droneDistSignal;
-    simsignal_t satDistSignal;
-    simsignal_t pheromoneSignal;
-    long numConnectedDevs = 0;
-    long cainMsg = 0;
-    long recCainFwdMsg = 0;
-    long sentCainFwdMsg = 0;
-    long recCainReqMsg = 0;
-    long sentCainReqMsg = 0;
-    long recCainRespMsg = 0;
-    long sentCainRespMsg = 0;
-    long recCainHopMsg = 0;
-    long sentCainHopMsg = 0;
-    long recCainErrMsg = 0;
-    long sentCainErrMsg = 0;
-    long sentCainRREQMsg = 0;
-    long recCainRREQMsg = 0;
-    long sentCainRREPMsg = 0;
-    long recCainRREPMsg = 0;
-    long recCainRREQFwdMsg = 0;
-    long sentCainRREQFwdMsg = 0;
+    simsignal_t timeSignal;
     long sentLarMsg = 0;
     long recLarMsg = 0;
     long recSprMsg = 0;
@@ -200,21 +151,8 @@ private:
     long sentBrapMsg = 0;
     double dist = 0;
     simtime_t delay = 0;
-    long powerThreshSig=0;
-    long batteryDecay=0;
-    long nodeEnd=0;
-    long msgHops=0;
-    long sendProb=0;
-    long distMapSize=0;
-    long respMapSize=0;
-    long recWeightMsg=0;
-    long recAntennaMsg=0;
-    long recFwdAntennaMsg=0;
     long recDroneMsg=0;
-    long recSatMsg=0;
     double droneDist = 0;
-    double satDist = 0;
-    long perhomoneS = 0;
 
     simtime_t meanDelay=0;
     unsigned int qtdMsg=0;

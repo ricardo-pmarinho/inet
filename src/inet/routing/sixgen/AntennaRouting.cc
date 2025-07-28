@@ -96,13 +96,8 @@ void AntennaRouting::initialize(int stage)
         if (useHelloMessages)
             helloMsgTimer = new cMessage("HelloMsgTimer");
 
-        distSignal = registerSignal("distSignal");
         timeSignal = registerSignal("timeSignal");
-        sendProbSignal = registerSignal("sendProbSignal");
-        distMapSizeSignal = registerSignal("distMapSizeSignal");
-        sentAntennaMsgSignal = registerSignal("sentAntennaMsgSignal");
-        recDroneMsgSignal = registerSignal("recDroneMsgSignal");
-        recSatMsgSignal = registerSignal("recSatMsgSignal");
+        recAntennaMsgSignal = registerSignal("recAntennaMsgSignal");
         antennaDistSignal = registerSignal("antennaDistSignal ");
 
     }
@@ -223,8 +218,6 @@ void AntennaRouting::handleMessageWhenUp(cMessage *msg)
             EV << "Antenna timer" << endl;
             auto antennaMsg = createAntennaMsg();
             sendHeartBeatpkg(antennaMsg,antennaMsg->getDestAddr(),antennaMsg->getHopCount(),0);
-            sentAntennaMsg++;
-            emit(sentAntennaMsgSignal,sentAntennaMsg);
             scheduleAt(simTime()+5, antennaTimer);
         }
         else if (msg == counterTimer) {
@@ -974,8 +967,10 @@ void AntennaRouting::handleSatelliteMsg(const Ptr<SATMSG>& satMsg)
         //it is a regular node: the strcmp returns 1
     Coord thisCoord = Coord(baseMobility->getCurrentPosition());
     Coord senderCoord = satMsg->getSenderCoord();
-    double dist = thisCoord.distance(senderCoord);
-    emit(antennaDistSignal,dist);
+    double antennaDist = thisCoord.distance(senderCoord);
+
+    recAntennaMsg++;
+    emit(antennaDistSignal,recAntennaMsgSignal);
 }
 
 void AntennaRouting::calcDelayMean(simtime_t msgInit){

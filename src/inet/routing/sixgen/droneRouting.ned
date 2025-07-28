@@ -70,52 +70,7 @@ simple droneRouting like IApp
         double nextHopWait @unit(s) = default(nodeTraversalTime + 0.01s); // timeout for a RREP-ACK
         double pathDiscoveryTime @unit(s) = default(2 * netTraversalTime); // buffer timeout for each broadcasted RREQ message
        
-        @signal[connectedDevsSignal](type=long);
-        @statistic[connectedDevsSignal](title="Number of connected devices to a CH";record=vector,count,max,last;interpolationmode=none);
         
-        @signal[cainMsgSignal](type=long);
-        @statistic[cainMsgSignal](title="Number of CAIN messages received";record=count,max,last;interpolationmode=none);
-        
-        @signal[recCainFwdMsgSignal](type=long);
-        @statistic[recCainFwdMsgSignal](title="Number of CAIN FWD message received";record=mean,vector,count,max,last;interpolationmode=none);
-        @signal[sentCainFwdMsgSignal](type=long);
-        @statistic[sentCainFwdMsgSignal](title="Number of CAIN FWD message sent";record=vector,count,max,last;interpolationmode=none);
-        
-        @signal[sentCainReqMsgSignal](type=long);
-        @statistic[sentCainReqMsgSignal](title="Number of CAIN REQ messages sent";record=vector,count,max,last;interpolationmode=none);
-        @signal[recCainReqMsgSignal](type=long);
-        @statistic[recCainReqMsgSignal](title="Number of CAIN REQ messages received";record=vector,count,max,last;interpolationmode=none);
-        
-        @signal[sentCainRespMsgSignal](type=long);
-        @statistic[sentCainRespMsgSignal](title="Number of CAIN RESP messages sent";record=vector,count,max,last;interpolationmode=none);
-        @signal[recCainRespMsgSignal](type=long);
-        @statistic[recCainRespMsgSignal](title="Number of CAIN RESP messages received";record=vector,count,max,last;interpolationmode=none);
-        
-        @signal[sentCainHopMsgSignal](type=long);
-        @statistic[sentCainHopMsgSignal](title="Number of CAIN HOP messages sent";record=vector,count,max,last;interpolationmode=none);
-        @signal[recCainHopMsgSignal](type=long);
-        @statistic[recCainHopMsgSignal](title="Number of CAIN HOP messages received";record=vector,count,max,last;interpolationmode=none);
-        
-        @signal[sentCainErrMsgSignal](type=long);
-        @statistic[sentCainErrMsgSignal](title="Number of CAIN ERR messages sent";record=vector,count,max,last;interpolationmode=none);
-        @signal[recCainErrMsgSignal](type=long);
-        @statistic[recCainErrMsgSignal](title="Number of CAIN ERR messages received";record=vector,count,max,last;interpolationmode=none);
-        
-        @signal[sentCainRREQMsgSignal](type=long);
-        @statistic[sentCainRREQMsgSignal](title="Number of CAIN RREQ messages sent";record=count,max,last;interpolationmode=none);
-        @signal[recCainRREQMsgSignal](type=long);
-        @statistic[recCainRREQMsgSignal](title="Number of CAIN RREQ messages received";record=count,max,last;interpolationmode=none);
-        
-        @signal[sentCainRREPMsgSignal](type=long);
-        @statistic[sentCainRREPMsgSignal](title="Number of CAIN RREP messages sent";record=count,max,last;interpolationmode=none);
-        @signal[recCainRREPMsgSignal](type=long);
-        @statistic[recCainRREPMsgSignal](title="Number of CAIN RREP messages received";record=count,max,last;interpolationmode=none);
-           
-        @signal[recCainRREQFwdMsgSignal](type=long);
-        @statistic[recCainRREQFwdMsgSignal](title="Number of CAIN RREQFWD messages received";record=count,max,last;interpolationmode=none);
-        
-        @signal[sentCainRREQFwdMsgSignal](type=long);
-        @statistic[sentCainRREQFwdMsgSignal](title="Number of CAIN RREQFWD messages sent";record=count,max,last;interpolationmode=none);
         
         @signal[recLarMsgSignal](type=long);
         @statistic[recLarMsgSignal](title="Number of CAIN LAR messages received";record=count,max,last;interpolationmode=none);
@@ -135,53 +90,14 @@ simple droneRouting like IApp
         @signal[sentBrapMsgSignal](type=long);
         @statistic[sentBrapMsgSignal](title="Number of CAIN BRAP messages sent";record=count,max,last;interpolationmode=none);
         
-        @signal[distSignal](type=double);
-        @statistic[distSignal](title="Distance from sender to destination";record=count,max,last;interpolationmode=none);
-        
-        @signal[timeSignal](type=double);
-        @statistic[timeSignal](title="delay";record=count,max,last;interpolationmode=none);
-        
-        @signal[powerThreshSignal](type=long);
-        @statistic[powerThreshSignal](title="Power thresh";record=count,max,last;interpolationmode=none);
-        
-        @signal[batteryDecaySignal](type=long);
-        @statistic[batteryDecaySignal](title="Battery decay";record=vector,count,max,last;interpolationmode=none);
-        
-        @signal[nodeEndingSignal](type=long);
-        @statistic[nodeEndingSignal](title="Node end";record=vector,count,max,last;interpolationmode=none);
-        
-        @signal[hopCountSignal](type=long);
-        @statistic[hopCountSignal](title="hop count";record=vector,count,max,last;interpolationmode=none);
-        
-        @signal[sendProbSignal](type=long);
-        @statistic[sendProbSignal](title="Send probability";record=vector,count,max,last;interpolationmode=none);
-        
-        @signal[distMapSizeSignal](type=long);
-        @statistic[distMapSizeSignal](title="distMapSizeSignal";record=vector,count,max,last;interpolationmode=none);
-        
-        @signal[respMapSizeSignal](type=long);
-        @statistic[respMapSizeSignal](title="respMapSizeSignal";record=vector,count,max,last;interpolationmode=none);
-        
-        @signal[recWeightMsgSignal](type=long);
-        @statistic[recWeightMsgSignal](title="received weight message";record=vector,count,max,last;interpolationmode=none);
-        
-        @signal[recAntennaMsgSignal](type=long);
-        @statistic[recAntennaMsgSignal](title="received antenna message";record=vector,count,max,last;interpolationmode=none);
-        
-        @signal[recFwdAntennaMsgSignal](type=long);
-        @statistic[recFwdAntennaMsgSignal](title="sent antenna message";record=vector,count,max,last;interpolationmode=none);
-        
         @signal[recDroneMsgSignal](type=long);
         @statistic[recDroneMsgSignal](title="received fwd drone message";record=vector,count,max,last;interpolationmode=none);
-        
-        @signal[recSatMsgSignal](type=long);
-        @statistic[recSatMsgSignal](title="received fwd sat message";record=vector,count,max,last;interpolationmode=none);
         
         @signal[droneDistSignal](type=double);
         @statistic[droneDistSignal](title="Distance from sender to drone";record=count,max,last;interpolationmode=none);
         
-        @signal[pheromoneSignal](type=long);
-        @statistic[pheromoneSignal](title="received fwd drone message";record=vector,count,max,last;interpolationmode=none);
+        @signal[timeSignal](type=double);
+        @statistic[timeSignal](title="delay";record=count,max,last;interpolationmode=none);
     gates:
         input socketIn;
         output socketOut;

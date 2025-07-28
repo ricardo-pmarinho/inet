@@ -92,22 +92,10 @@ private:
 
 //    std::string netType;
 
-    simsignal_t recCainFwdMsgSignal;
-    simsignal_t distSignal;
-    simsignal_t recAntennaMsgSignal;
-    simsignal_t recDroneMsgSignal;
     simsignal_t recSatMsgSignal;
-    simsignal_t droneDistSignal;
     simsignal_t satDistSignal;
-    long recCainFwdMsg = 0;
-    double dist = 0;
     simtime_t delay = 0;
-    long sendProb=0;
-    long distMapSize=0;
-    long recAntennaMsg=0;
-    long recDroneMsg=0;
     long recSatMsg=0;
-    double droneDist = 0;
     double satDist = 0;
 
     simtime_t meanDelay=0;

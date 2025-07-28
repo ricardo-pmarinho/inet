@@ -79,6 +79,7 @@ simple wirelessRouting like IApp
         
         @signal[recCainFwdMsgSignal](type=long);
         @statistic[recCainFwdMsgSignal](title="Number of CAIN FWD message received";record=mean,vector,count,max,last;interpolationmode=none);
+        
         @signal[sentCainFwdMsgSignal](type=long);
         @statistic[sentCainFwdMsgSignal](title="Number of CAIN FWD message sent";record=vector,count,max,last;interpolationmode=none);
         

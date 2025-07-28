@@ -59,6 +59,7 @@ private:
     pair<L3Address,float> *bestLarHopAddr;
     vector<L3Address>* sprayNWaitNeighb;
     std::string rl_type=getModuleByPath("simpleNetwork")->par("rl_type");
+    bool gatEnable=getModuleByPath("simpleNetwork")->par("gatEnable");
     double alpha = getModuleByPath("simpleNetwork")->par("alphaRl");
     double phero = 0.0; //node's pheromone
     double probPhero = 0.0;

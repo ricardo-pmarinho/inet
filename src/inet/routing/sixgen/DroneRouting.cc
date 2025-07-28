@@ -93,15 +93,8 @@ void DroneRouting::initialize(int stage)
         if (useHelloMessages)
             helloMsgTimer = new cMessage("HelloMsgTimer");
 
-        recCainFwdMsgSignal = registerSignal("recCainFwdMsgSignal");
-        distSignal = registerSignal("distSignal");
         timeSignal = registerSignal("timeSignal");//delay
-        sendProbSignal = registerSignal("sendProbSignal");
-        distMapSizeSignal = registerSignal("distMapSizeSignal");
-        respMapSizeSignal = registerSignal("respMapSizeSignal");
-        recAntennaMsgSignal = registerSignal("recAntennaMsgSignal");
         recDroneMsgSignal = registerSignal("recDroneMsgSignal");
-        recSatMsgSignal = registerSignal("recSatMsgSignal");
         droneDistSignal = registerSignal("droneDistSignal");
 
     }
@@ -110,7 +103,8 @@ void DroneRouting::initialize(int stage)
         host->subscribe(linkBrokenSignal, this);
         usingIpv6 = (routingTable->getRouterIdAsGeneric().getType() == L3Address::IPv6);
         neighborBattery = new std::map<L3Address,int>();
-        baseMobility = check_and_cast<BonnMotionMobility*>(host->getSubmodule("mobility"));
+//        baseMobility = check_and_cast<BonnMotionMobility*>(host->getSubmodule("mobility"));
+        baseMobility = check_and_cast<MassMobility*>(host->getSubmodule("mobility"));
         energyStorage = check_and_cast<SimpleEpEnergyStorage*>(host->getSubmodule("energyStorage"));
         energyManagement = check_and_cast<SimpleEpEnergyManagement*>(host->getSubmodule("energyManagement"));
         antennaAddr = addressType->getUnspecifiedAddress();
@@ -590,13 +584,6 @@ void DroneRouting::handleCainFWD(const Ptr<CAINMSG>& cainmsg){
     if(this->getSelfIPAddress() == cainmsg->getDestAddr()){
         auto droneMsg = createDroneMsg(addressType->getBroadcastAddress());
         EV << "Drone receiving message" << endl;
-        Coord ueCoord = cainmsg->getSenderCoord();
-        Coord thisCoord = baseMobility->getCurrentPosition();
-        droneDist = thisCoord.distance(ueCoord);
-        emit(droneDistSignal,droneDist);
-
-        recDroneMsg++;
-        emit(recDroneMsgSignal,recDroneMsg);
 
         if(satelliteAddr.isUnspecified()){
             int droneDistMapsize = droneDistMap->size();
@@ -612,8 +599,17 @@ void DroneRouting::handleCainFWD(const Ptr<CAINMSG>& cainmsg){
                     }
                 }
             }
-        }else
+        }else{
             droneMsg->setDestAddr(satelliteAddr);
+
+            Coord ueCoord = cainmsg->getSenderCoord();
+            Coord thisCoord = baseMobility->getCurrentPosition();
+            droneDist = thisCoord.distance(ueCoord);
+            emit(droneDistSignal,droneDist);
+
+            recDroneMsg++;
+            emit(recDroneMsgSignal,recDroneMsg);
+        }
         sendHeartBeatpkg(droneMsg,addressType->getBroadcastAddress(),1,0);
     }
 }
@@ -623,8 +619,6 @@ void DroneRouting::handleDroneMsg(const Ptr<DRONEMSG>& droneMsg){
     EV << "Drone message arriving with address: " << droneMsg->getSourceAddr() << endl;
     EV << "This addr: " << getSelfIPAddress() << endl;
     EV << "Destination: " << droneMsg->getDestAddr() << endl;
-    if(this->getSelfIPAddress() == L3Address("145.236.0.6"))
-        satelliteAddr = L3Address("145.236.0.4");
     if(this->getSelfIPAddress() == droneMsg->getDestAddr()){
         if(satelliteAddr.isUnspecified()){
             int droneDistMapsize = droneDistMap->size();
@@ -641,6 +635,14 @@ void DroneRouting::handleDroneMsg(const Ptr<DRONEMSG>& droneMsg){
             }
         }else{
             droneMsg->setDestAddr(satelliteAddr);
+
+            Coord ueCoord = droneMsg->getSenderCoord();
+            Coord thisCoord = baseMobility->getCurrentPosition();
+            droneDist = thisCoord.distance(ueCoord);
+            emit(droneDistSignal,droneDist);
+
+            recDroneMsg++;
+            emit(recDroneMsgSignal,recDroneMsg);
         }
         sendHeartBeatpkg(droneMsg,addressType->getBroadcastAddress(),1,0);
     }

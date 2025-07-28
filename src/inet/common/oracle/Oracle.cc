@@ -357,7 +357,7 @@ void Oracle::checkShutdownNodes(){
         if(!it->second)
             nodeCount++;
     }
-    if(nodeCount >=0.9*recNodes->size()){
+    if(nodeCount >=0.8*recNodes->size()){
         simulationEnd = lround(simTime().dbl());
 
         emit(simulationEndSignal,simulationEnd);

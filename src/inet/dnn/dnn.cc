@@ -165,6 +165,46 @@ std::vector<bool>* dnn::calculateDnn(double attention,double dist, double delay)
 
 }
 
+std::vector<bool>* dnn::calculateDnn(double dist, double delay){
+    //this dnn is the initial one
+    this->connections->operator [](0)->values->push_back(dist);
+    this->connections->operator [](0)->recWeights->push_back(1);
+    this->connections->operator [](0)->functionValue=dist;
+    this->connections->operator [](1)->values->push_back(delay);
+    this->connections->operator [](1)->recWeights->push_back(1);
+    this->connections->operator [](1)->functionValue=delay;
+
+    dnn* aux = this;
+    for(;aux->connections->size()>0;aux=aux->connections->operator [](0)){
+        for(int i = 0; i < aux->connections->size();i++){
+            dnn* neuron = aux->connections->operator [](i);
+            if(neuron->name != "I0" && neuron->name != "I1"){
+                float weightedValues = 0;
+                for(int j = 0; j < neuron->recWeights->size(); j++)
+                    weightedValues+=(neuron->recWeights->operator [](j)*neuron->values->operator [](j));
+                neuron->functionValue=1/(1+exp(-weightedValues));
+            }
+            for(int j = 0; j < neuron->connections->size();j++){
+                neuron->connections->operator [](j)->recWeights->push_back(
+                        neuron->weights->operator [](j)
+                        );
+                neuron->connections->operator [](j)->values->push_back(
+                        neuron->functionValue
+                        );
+            }
+        }
+    }
+
+    //updates the new decision for
+    this->decisionVect->operator [](0)=this->decisionVect->operator [](1);
+    if(aux->functionValue < 0.5)
+        this->decisionVect->operator [](1)= false;
+    else
+        this->decisionVect->operator [](1)= true;
+    return this->decisionVect;
+
+}
+
 std::vector<bool>* dnn::calculateDroneDnn(double attention,double dist){
     //this dnn is the initial one
     this->connections->operator [](0)->values->push_back(dist);

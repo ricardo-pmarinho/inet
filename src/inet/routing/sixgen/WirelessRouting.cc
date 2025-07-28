@@ -189,7 +189,6 @@ void WirelessRouting::initialize(int stage)
         bestLarHopAddr= new pair<L3Address,float>();
         sprayNWaitNeighb = new vector<L3Address>();
 
-        gat = new Gat();
         fwdAck = new vector<int>();
         reqAck = new vector<int>();
         hopAck = new vector<int>();
@@ -252,7 +251,13 @@ void WirelessRouting::initialize(int stage)
                 droneQMatrix[i][j]=0;
             }
         }
-        network=network->createDnn(3, 2, 3, 1);
+
+        if(gatEnable){
+            gat = new Gat();
+            network=network->createDnn(3, 2, 3, 1);
+        }else{
+            network=network->createDnn(2, 2, 3, 1);
+        }
     }
     else if (stage == INITSTAGE_APPLICATION_LAYER){
         oracle_ = check_and_cast<Oracle*>(getSimulation()->getModuleByPath("Oracle"));
@@ -290,6 +295,7 @@ void WirelessRouting::receiveSignal(cComponent *source, simsignal_t signalID, cO
 
 void WirelessRouting::handleMessageWhenUp(cMessage *msg)
 {
+
     if (msg->isSelfMessage()) {
         if (auto waitForRrep = dynamic_cast<WaitForRrep *>(msg))
             handleWaitForRREP(waitForRrep);
@@ -331,6 +337,7 @@ void WirelessRouting::handleMessageWhenUp(cMessage *msg)
         }else if(msg == leachChDecision){
             chDecision();
             scheduleAt(simTime()+5, leachChDecision);
+            EV << "Leach ch decision" << endl;
         }else if(msg == chInfo){
             EV << "this ip: " << this->getSelfIPAddress() << endl;
             auto snoopPkg = createSnoopMsg();
@@ -338,6 +345,8 @@ void WirelessRouting::handleMessageWhenUp(cMessage *msg)
             if(chInfo->isScheduled())
                 cancelEvent(chInfo);
             scheduleAt(simTime()+5, chInfo);
+
+                EV << "chinfo" << endl;
         }else if(msg == endTimer){
             batteryDecay = getDevBatteryPower();
             emit(batteryDecaySignal,batteryDecay);
@@ -353,9 +362,10 @@ void WirelessRouting::handleMessageWhenUp(cMessage *msg)
         }else if(msg == cainAck){
             return;
         }else if(msg == cainTrigger){
+            EV << "cainTrigger" << endl;
             oracle_->setStartNode(getSelfIPAddress());
             std::string netType = getModuleByPath("simpleNetwork")->par("networkType");
-                auto cainMsg = createCainMsg();
+            auto cainMsg = createCainMsg();
             if(netType == "EECRM"){
                 if(!bestHopAddr->first.isUnspecified()){
                     cainMsg = createCainRREQ();
@@ -1749,7 +1759,8 @@ void WirelessRouting::handleHostSnooping(const Ptr<SNOOPHB> snoop)
     if(dist > com_range)
         com_range = dist;
 
-    this->gat->insertGatNeighbor(snoop->getOriginatorAddr(),dist);
+    if(gatEnable)
+        this->gat->insertGatNeighbor(snoop->getOriginatorAddr(),dist);
 
     neighbMap->operator [](sourceAddr) = snoop->getBatteryPercent();
     //sprayNwait
@@ -2309,47 +2320,38 @@ void WirelessRouting::handleSCMSG(const Ptr<CAINMSG>& cainmsg){
         int hopCount=cainmsg->getHopCount();
 
 
-        if(!antennaAddr.isUnspecified()){
-            cainmsg->setSourceAddr(getSelfIPAddress());
-            cainmsg->setDestAddr(addressType->getBroadcastAddress());
-            cainmsg->setCainDestAddr(antennaAddr);
-            int hopcount=cainmsg->getHopCount();
-            cainmsg->setHopCount(--hopcount);
-            EV << "antenna address: " << antennaAddr << endl;
-            sendCainMsg(cainmsg,1,0);
-        }else{
-            int hops=cainmsg->getHops();
-            cainmsg->setHops(++hops);
-            if(getSelfIPAddress() == chAddr){
-                msgHops=cainmsg->getHops();
-                emit(hopCountSignal,msgHops);
-                recCainFwdMsg++;
-                emit(recCainFwdMsgSignal,recCainFwdMsg);
+        if(getSelfIPAddress() == chAddr && cainmsg->getCainDestAddr() == getSelfIPAddress()){
 
-                simtime_t arrivalTime = simTime();
-                delay=arrivalTime-cainmsg->getTimeInit();
-                EV << "msg delay: " << delay << endl;
-                emit(timeSignal,delay);
+            Coord senderCoord = cainmsg->getSenderCoord();
+            dist = baseMobility->getCurrentPosition().distance(senderCoord);
+            emit(distSignal,dist);
+            msgHops=cainmsg->getHops();
+            emit(hopCountSignal,msgHops);
+            EV << "Reached a full CH." << endl;
+            cainMsg++;
+            emit(cainMsgSignal,cainMsg);
 
-                Coord ueCoord = cainmsg->getSenderCoord();
-                Coord thisCoord = baseMobility->getCurrentPosition();
-                dist = thisCoord.distance(ueCoord);
-                emit(distSignal,dist);
+            recCainFwdMsg++;
+            emit(recCainFwdMsgSignal,recCainFwdMsg);
 
-                if(!droneAddr.isUnspecified()){
-                    cainmsg->setCainDestAddr(droneAddr);
-                    cainmsg->setDestAddr(droneAddr);
-                    cainmsg->setSourceAddr(getSelfIPAddress());
-                    sendCainMsg(cainmsg,1,0);
-                }
+            simtime_t arrivalTime = simTime();
+            delay=arrivalTime.dbl()-cainmsg->getTimeInit();
+            emit(timeSignal,delay);
 
-            }else{
-                if(chAddr.isUnspecified())
-                    cainmsg->setCainDestAddr(bestHopAddr->first);
-                else
-                    cainmsg->setCainDestAddr(chAddr/*bestHopAddr->first*/);
-                //cainmsg->setHopCount(hopCount-1);
+            if(!droneAddr.isUnspecified()){
+                cainmsg->setPacketType(usingIpv6 ? CAINFWD_IPv6 : CAINFWD);
+                cainmsg->setCainDestAddr(droneAddr);
+                cainmsg->setDestAddr(droneAddr);
                 cainmsg->setSourceAddr(getSelfIPAddress());
+                sendCainMsg(cainmsg,1,0);
+            }
+        }else{
+            if(cainmsg->getHopCount()>0){
+                cainmsg->setSourceAddr(getSelfIPAddress());
+                cainmsg->setDestAddr(addressType->getBroadcastAddress());
+                cainmsg->setCainDestAddr(chAddr);
+                int hopcount=cainmsg->getHopCount();
+                cainmsg->setHopCount(--hopcount);
                 sentCainFwdMsg++;
                 emit(sentCainFwdMsgSignal,sentCainFwdMsg);
                 sendCainMsg(cainmsg, 2,0);
@@ -2366,49 +2368,41 @@ void WirelessRouting::handleCainLAR(const Ptr<CAINMSG>& cainmsg){
     if(recFwdMessages->find(cainmsg->getOriginatorAddr()) == recFwdMessages->end()){
         recFwdMessages->operator [](cainmsg->getOriginatorAddr())=cainmsg->getMsgId();
 
-        if(!antennaAddr.isUnspecified()){
-            cainmsg->setSourceAddr(getSelfIPAddress());
-            cainmsg->setDestAddr(addressType->getBroadcastAddress());
-            cainmsg->setCainDestAddr(antennaAddr);
-            int hopcount=cainmsg->getHopCount();
-            cainmsg->setHopCount(--hopcount);
-            EV << "antenna address: " << antennaAddr << endl;
-            sendCainMsg(cainmsg,1,0);
-        }else{
-            int hops=cainmsg->getHops();
-            cainmsg->setHops(++hops);
-            updateLarBestHop(cainmsg->getSourceAddr(),cainmsg->getSenderCoord());
-            int hopCount=cainmsg->getHopCount();
-            if(getSelfIPAddress() == chAddr){
-                Coord ueCoord = cainmsg->getSenderCoord();
-                Coord thisCoord = baseMobility->getCurrentPosition();
-                dist = thisCoord.distance(ueCoord);
-                emit(distSignal,dist);
-                recLarMsg++;
-                emit(recLarMsgSignal,recLarMsg);
-                msgHops=cainmsg->getHops();
-                emit(hopCountSignal,msgHops);
-                simtime_t arrivalTime = simTime();
-                delay=arrivalTime-cainmsg->getTimeInit();
+	
+		int hops=cainmsg->getHops();
+		cainmsg->setHops(++hops);
+		updateLarBestHop(cainmsg->getSourceAddr(),cainmsg->getSenderCoord());
+		int hopCount=cainmsg->getHopCount();
+		if(getSelfIPAddress() == chAddr && cainmsg->getCainDestAddr() == getSelfIPAddress()){
+			Coord ueCoord = cainmsg->getSenderCoord();
+			Coord thisCoord = baseMobility->getCurrentPosition();
+			dist = thisCoord.distance(ueCoord);
+			emit(distSignal,dist);
+            recCainFwdMsg++;
+            emit(recCainFwdMsgSignal,recCainFwdMsg);
+			msgHops=cainmsg->getHops();
+			emit(hopCountSignal,msgHops);
+			simtime_t arrivalTime = simTime();
+			delay=arrivalTime-cainmsg->getTimeInit();
 
-                emit(timeSignal,delay);
-                if(!droneAddr.isUnspecified()){
-                    cainmsg->setCainDestAddr(droneAddr);
-                    cainmsg->setDestAddr(droneAddr);
-                    cainmsg->setSourceAddr(getSelfIPAddress());
-                    sendCainMsg(cainmsg,1,0);
-                }
-            }else if(hopCount>0 && getSelfIPAddress() == cainmsg->getCainDestAddr()){
-                cainmsg->setCainDestAddr(bestLarHopAddr->first);
-                cainmsg->setHopCount(hopCount-1);
-                cainmsg->setSourceAddr(getSelfIPAddress());
-                cainmsg->setSenderCoord(baseMobility->getCurrentPosition());
-                sentLarMsg++;
-                emit(sentLarMsgSignal,sentLarMsg);
-                sendCainMsg(cainmsg, cainmsg->getHopCount(),0);
-            }
-        }
-    }
+			emit(timeSignal,delay);
+			if(!droneAddr.isUnspecified()){
+                cainmsg->setPacketType(usingIpv6 ? CAINFWD_IPv6 : CAINFWD);
+				cainmsg->setCainDestAddr(droneAddr);
+				cainmsg->setDestAddr(droneAddr);
+				cainmsg->setSourceAddr(getSelfIPAddress());
+				sendCainMsg(cainmsg,1,0);
+			}
+		}else if(hopCount>0){
+			cainmsg->setCainDestAddr(bestLarHopAddr->first);
+			cainmsg->setHopCount(hopCount-1);
+			cainmsg->setSourceAddr(getSelfIPAddress());
+			cainmsg->setSenderCoord(baseMobility->getCurrentPosition());
+			sentLarMsg++;
+			emit(sentLarMsgSignal,sentLarMsg);
+			sendCainMsg(cainmsg, cainmsg->getHopCount(),0);
+		}
+	}
 }
 
 void WirelessRouting::handleCainSPR(const Ptr<CAINMSG>& cainmsg){
@@ -3044,10 +3038,13 @@ void WirelessRouting::calculateDnnDecision(L3Address cainDest){
             dnnDist = calculateDnnDist(state, distMap->at(cainDest),rl_type);
         else
             dnnDist = calculateDnnDist(state, hopMap->at(cainDest),rl_type);
-        this->gat->calcAttention();
-        double attention = this->gat->getAttention(cainDest);
-        std::vector<bool> *decisionVect = network->calculateDnn(attention,dnnDist, meanDelay.dbl()*pow(10,6));
-//        std::vector<bool> *decisionVect = network->calculateDnn(1,dnnDist, meanDelay.dbl()*pow(10,6));
+        std::vector<bool> *decisionVect;
+        if(gatEnable){
+            this->gat->calcAttention();
+            double attention = this->gat->getAttention(cainDest);
+            decisionVect = network->calculateDnn(attention,dnnDist, meanDelay.dbl()*pow(10,6));
+        }else
+            decisionVect = network->calculateDnn(dnnDist, meanDelay.dbl()*pow(10,6));
         int decision;
 
         if(decisionVect->operator [](0)){//true
