@@ -13,11 +13,11 @@
 // along with this program.  If not, see http://www.gnu.org/licenses/.
 // 
 
-#ifndef INET_ROUTING_SIXGEN_SATELLITEROUTING_H_
-#define INET_ROUTING_SIXGEN_SATELLITEROUTING_H_
-
+#ifndef INET_ROUTING_SIXGEN_IRSROUTING_H_
+#define INET_ROUTING_SIXGEN_IRSROUTING_H_
 
 #include <map>
+#include <omnetpp.h>
 #include "inet/common/INETDefs.h"
 #include "inet/common/oracle/Oracle.h"
 #include "inet/common/sixgenCommon/SixgenCommon.h"
@@ -26,6 +26,8 @@
 #include "inet/networklayer/contract/INetfilter.h"
 #include "inet/networklayer/contract/IRoutingTable.h"
 #include "inet/routing/sixgen/heartBeat_m.h"
+//#include "inet/routing/sixgen/WirelessRoutingRouteData.h"
+#include "inet/mobility/static/StaticLinearMobility.h"
 #include "inet/routing/base/RoutingProtocolBase.h"
 #include "inet/transportlayer/contract/udp/UdpSocket.h"
 #include "inet/transportlayer/udp/UdpHeader_m.h"
@@ -34,34 +36,26 @@
 #include "inet/common/geometry/common/Coord.h"
 #include "inet/power/storage/SimpleEpEnergyStorage.h"
 #include "inet/power/management/SimpleEpEnergyManagement.h"
-#include <omnetpp.h>
 #include "inet/dnn/dnn.h"
+#include "inet/gat/Gat.h"
 
 namespace inet {
-namespace satelliterouting {
+namespace irsrouting {
 
 using namespace power;
 using namespace wirelessrouting;
 
-class INET_API SatelliteRouting : public RoutingProtocolBase, public NetfilterBase::HookBase, public UdpSocket::ICallback, public cListener
+class INET_API IrsRouting : public RoutingProtocolBase, public NetfilterBase::HookBase, public UdpSocket::ICallback, public cListener
 {
 private:
 
-    BonnMotionMobility* baseMobility = nullptr;
-    MassMobility* droneMobility = nullptr;
+    StaticLinearMobility* baseMobility = nullptr;
     SimpleEpEnergyStorage* energyStorage = nullptr;
     SimpleEpEnergyManagement* energyManagement = nullptr;
-    std::string rl_type=getModuleByPath("simpleNetwork")->par("rl_type");
-    dnn* network;
-    int index=0;
-    int n_s0=0; //number of times a node chosen for communication was in state 0 (closer)
-    int n_s1=0; //number of times a node chosen for communication was in state 1 (median)
-    int n_s2=0; //number of times a node chosen for communication was in state 2 (further)
-    int currState = 0; //RL states 0-> decrease battery tresh; 1->maintain battery tresh; 2->increase battery tresh
-    int qtdMessArrived = 0; //stores the number of different reply messages arrived
     vector<float>* stateMatrix[3][4];
     vector<float>* rewardMatrix[3][4];
     float qMatrix[3][4];
+    float droneQMatrix[3][4];
     /**
      * map for the RL algorithm using the Euclidean distance metric
      * This map stores the distance between the node and its neighbors
@@ -69,34 +63,44 @@ private:
      * |neighbAddr|distNodeNeighb|
      *  -------------------------
      * */
-    map<L3Address,double> *distMap;
-    map<L3Address,int> *neighbMap; //neighbors wit their battery level
-    list<std::string> *sentMessages; //stores the sent messages' id
+    map<L3Address,double> *hostDistMap;
+    map<L3Address,double> *droneDistMap; //map for the RL algorithm: distance for drones when a host receives it and
+                                         //distance from satellite when drone receives it
     vector<int> *fwdAck; //vector to store the sequence number of the fwd messages that were not acked yet
     vector<int> *reqAck; //vector to store the sequence number of the req messages that were not acked yet
     vector<int> *hopAck; //vector to store the sequence number of the hop messages that were not acked yet
-    int numNodes;
-    int com_range;//alpha threshold for the RL Euclidean distance
-    int qtd_ranges;//beta threshold for the RL algorithms
-    int send_prob;//probability to send a message
     int timeCounter=0;//counter to reset the distance and hop thresholds
+    unsigned int weightMsgCounter=0;//counter to know how many weight messages this CH has received
+    bool chCandidate = true; //node can be a CH candidate for LEACH
     double neighBatteryMean = 0.0;
-    int higherNeighBattery = 0; //for the leach ch election process
     double neighDistMean = 0.0;
-    std::vector<L3Address> *leachNeigh;
-    map<L3Address,double> *satelliteDistMap; //map for the RL algorithm: distance for drones when a host receives it and
-                                         //distance from satellite when drone receives it
+    Gat* gat;
 
     map<pair<L3Address,L3Address>,pair<L3Address,int>> *routes;//<<originator,destination>,<next_hop,battery>>
     map<pair<L3Address,L3Address>,L3Address> *revRoute;//<<originator,destination>,prev_hop>
 
 //    std::string netType;
 
-    simsignal_t recSatMsgSignal;
-    simsignal_t satDistSignal;
+
+    simsignal_t recLarMsgSignal;
+    simsignal_t sentLarMsgSignal;
+    simsignal_t recSprMsgSignal;
+    simsignal_t sentSprMsgSignal;
+    simsignal_t recBrapMsgSignal;
+    simsignal_t sentBrapMsgSignal;
+    simsignal_t recDroneMsgSignal;
+    simsignal_t droneDistSignal;
+    simsignal_t timeSignal;
+    long sentLarMsg = 0;
+    long recLarMsg = 0;
+    long recSprMsg = 0;
+    long sentSprMsg = 0;
+    long recBrapMsg = 0;
+    long sentBrapMsg = 0;
+    double dist = 0;
     simtime_t delay = 0;
-    long recSatMsg=0;
-    double satDist = 0;
+    long recDroneMsg=0;
+    double droneDist = 0;
 
     simtime_t meanDelay=0;
     unsigned int qtdMsg=0;
@@ -150,9 +154,11 @@ private:
     bool usingIpv6 = false;
 
     //ch definition
+    simtime_t chTimer; //timer for sending ch info message
+    simtime_t chDef; //timer for electing the CH
     simtime_t routingStart; //timer for start the routing protocol
 
-    // SatelliteRouting parameters: the following parameters are configurable, see the NED file for more info.
+    // WirelessRouting parameters: the following parameters are configurable, see the NED file for more info.
     unsigned int rerrRatelimit = 0;
     unsigned int WirelessRoutingUDPPort = 0;
     bool askGratuitousRREP = false;
@@ -207,6 +213,20 @@ private:
     cMessage *counterTimer = nullptr;    // timer to set rrerCount = rreqCount = 0 in each second
     cMessage *rrepAckTimer = nullptr;    // timer to wait for RREP-ACKs (RREP-ACK timeout)
     cMessage *blacklistTimer = nullptr;    // timer to clean the blacklist out
+    cMessage *chInfo = nullptr;        //timer to exchange CH information
+    cMessage *chElection = nullptr;     //timer to start ch election
+    cMessage *chReset = nullptr;     //timer to reset the ch addres due to inactivity
+    cMessage *cainTrigger = nullptr;    //timer to start cain messages
+    cMessage *cainNotAck = nullptr;     //resend a not acked message
+    cMessage *cainFwdTimer = nullptr;  //timer to wait for check which device to send a fwd message
+    cMessage *conncetedDevTimer = nullptr; //timer to update the connected device to a ch
+    cMessage *cainAck = nullptr;
+    cMessage *endTimer = nullptr;    // timer to check simulations end
+    cMessage *antennaTimer = nullptr; //timer for antenna start operating
+    cMessage *droneTimer = nullptr; //timer for antenna start operating
+    cMessage *sendFlWeights = nullptr; //timer for send the FL weights for CH or antenna
+    cMessage *sendFlAvgWeights = nullptr; //timer for send the FL weights by CH or antenna
+    cMessage *leachChDecision = nullptr; //timer for the nodes to start the CH decision
 
     // lifecycle
     simtime_t rebootTime;    // the last time when the node rebooted
@@ -233,36 +253,34 @@ private:
     void expungeRoutes();
 //
 //    /* Control packet creators */
-    const Ptr<SNOOPHB> createSnoopMsg();
+    const Ptr<CAINMSG> createAckTimer(heartBeatType cainMsgType,int seqNum);
+    const Ptr<DRONEMSG> createDroneMsg(L3Address dest);
     const Ptr<SNOOPHB> createHelloMessage();
-    const Ptr<SATMSG> createSatMsg();
+    const Ptr<Rerr> createRERR(const std::vector<UnreachableNode>& unreachableNodes);
+    L3Address findHopRL();
+    const Ptr<CHDEF> createChDefMsg();
 //
     /* Control Packet handlers */
     void handleSnooping(const Ptr<SNOOPHB>& snoop, const L3Address& sourceAddr);
-    void handleCainIRS(const Ptr<CAINMSG>& droneMsg);
+    void handleDroneSnooping(const Ptr<SNOOPHB> snoop);
+    void handleHostSnooping(const Ptr<SNOOPHB> snoop);
     void handleCainFWD(const Ptr<CAINMSG>& cainmsg);
-    void handleAntennaMsg(const Ptr<ANTENNA>& antennaMsg);
-    void handleDroneMsg(const Ptr<DRONEMSG>& droneMsg);
-//
-//    /* Control Packet sender methods */
-    void sendSnooping(const Ptr<SNOOPHB>& snoop, unsigned int timeToLive);
-    void sendResp(const Ptr<RESPHB>& resp, const L3Address& destAddr, unsigned int timeToLive);
-    void sendCainMsg(const Ptr<CAINMSG>& cainmsg, unsigned int timeToLive,double delay);
-    void sendSprayMsg(const Ptr<CAINMSG>& cainMsg);
-    const Ptr<Rerr> createRERR(const std::vector<UnreachableNode>& unreachableNodes);
-    void handleSatelliteSnooping(const Ptr<SNOOPHB> snoop);
-    void handleAntennaSnooping(const Ptr<SNOOPHB> snoop);
+    void handleCainIRS(const Ptr<CAINMSG>& cainmsg);
+//    /* Control Packet forwarders */
+//    void forwardRREP(const Ptr<Rrep>& rrep, const L3Address& destAddr, unsigned int timeToLive);
+//    void forwardRREQ(const Ptr<Rreq>& rreq, unsigned int timeToLive);
 
+    void updateBestHop(L3Address srcAddr);
     void calcDelayMean(simtime_t msgInit);
 //
-    int get_coverage_state(L3Address cain_dest);
-    void calculate_coverage_reward(int state,bool decision,L3Address cain_dest);
+    bool sendMessageML(int state);
     void create_reward_matrix();
-    void calculate_q_matrix();
-    void calculateDnnDecision(L3Address cainDest);
+    void calculate_drone_q_matrix();
+    bool calculateDroneDecision(L3Address cainDest);
 
     double backoffTimer();
     double cainBackoff();
+    bool findFwdDest(L3Address cainDestAddr);
 
     /* Self message handlers */
     void handleRREPACKTimer();
@@ -302,11 +320,12 @@ private:
     virtual void handleCrashOperation(LifecycleOperation *operation) override;
 
 
+    void updateChCandidate(L3Address candidate, int batteryPercent, Coord senderCoord);
 public:
-    SatelliteRouting();
-    virtual ~SatelliteRouting();
+    IrsRouting();
+    virtual ~IrsRouting();
 };
 
-} /* namespace SatelliteRouting */
+} /* namespace wirelessrouting */
 } /* namespace  inet*/
-#endif /* INET_ROUTING_SIXGEN_SatelliteRouting_H_ */
+#endif /* INET_ROUTING_SIXGEN_WIRELESSROUTING_H_ */

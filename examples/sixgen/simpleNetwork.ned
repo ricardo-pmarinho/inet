@@ -20,6 +20,7 @@ import inet.node.sixgen.droneNode;
 import inet.node.sixgen.satelliteNode;
 import inet.node.sixgen.AntennaNode;
 import inet.node.sixgen.CentralNode;
+import inet.node.sixgen.irsNode;
 
 import inet.common.scenario.ScenarioManager;
 import inet.networklayer.configurator.ipv4.Ipv4NetworkConfigurator;
@@ -36,6 +37,7 @@ network simpleNetwork
         int numOfSats = default(2); // Number of satellites
         int numHost = default(2);
         int numDrone = default(2);
+        int numIrs = default(2);
         int numAntenna = default(1);
         int sprayFraction = default(10);
         string networkType;
@@ -45,6 +47,7 @@ network simpleNetwork
         string rl_type;
         int mlThreshold = default(300);
         double alphaRl = default(0.5);
+        bool irsEnable = default(false);
     types:
         channel Ether1000m extends DatarateChannel
         {
@@ -52,6 +55,10 @@ network simpleNetwork
             delay = 0.1us;
         }
     submodules:
+        irs[numIrs]: irsNode {
+            parameters:
+                @display("p=316,269");
+        }
         host[numHost]: sixgenNode {
             parameters:
                 @display("p=429,269");
@@ -67,9 +74,9 @@ network simpleNetwork
         drone[numDrone]: droneNode {
             @display("i=misc/drone;p=430,166");
         }
-//        central: CentralNode { // Adicionando o centralNode
-//            @display("p=150,183;i=device/server");
-//        }
+        //        central: CentralNode { // Adicionando o centralNode
+        //            @display("p=150,183;i=device/server");
+        //        }
         physicalEnvironment: PhysicalEnvironment {
             @display("p=580,425");
         }
@@ -102,9 +109,4 @@ network simpleNetwork
                 script = default(xml("<scenario/>"));
                 @display("p=100,221;is=s");
         }
-//    connections:
-//        // Criando conexão Ethernet entre um antennaNode e o centralNode
-//        for i=0..numAntenna-1{
-//            antenna[i].socketOut --> central.socketIn;
-//        }
 }

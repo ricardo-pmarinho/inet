@@ -233,6 +233,7 @@ EXECUTE_ON_STARTUP(
     e->insert(LEACH, "LEACH");
     e->insert(DRONE, "DRONE");
     e->insert(SAT, "SAT");
+    e->insert(CAINIRS, "CAINIRS");
     e->insert(SNP_IPv6, "SNP_IPv6");
     e->insert(RESP_IPv6, "RESP_IPv6");
     e->insert(CAINREQ_IPv6, "CAINREQ_IPv6");
@@ -255,6 +256,7 @@ EXECUTE_ON_STARTUP(
     e->insert(LEACH_IPv6, "LEACH_IPv6");
     e->insert(DRONE_IPv6, "DRONE_IPv6");
     e->insert(SAT_IPv6, "SAT_IPv6");
+    e->insert(CAINIRS_IPv6, "CAINIRS_IPv6");
     e->insert(def, "def");
 )
 

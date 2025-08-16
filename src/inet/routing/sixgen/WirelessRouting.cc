@@ -384,6 +384,8 @@ void WirelessRouting::handleMessageWhenUp(cMessage *msg)
                 cainMsg = createBRAPMSG();
             }
             ostringstream stream;
+            if(cainMsg->getPacketType() == CAINIRS || cainMsg->getPacketType() == CAINIRS_IPv6)
+                stream << "IRS-";
             if(cainMsg->getPacketType() == CAINFWD || cainMsg->getPacketType() == CAINFWD_IPv6)
                 stream << "FWD-";
             else if(cainMsg->getPacketType() == CAINREQ || cainMsg->getPacketType() == CAINREQ_IPv6)
@@ -427,6 +429,11 @@ void WirelessRouting::handleMessageWhenUp(cMessage *msg)
                                 double back = 0;
                                 sendCainMsg(cainMsg,2,back);
                             }
+                        }
+                    }else if(cainMsg->getPacketType() == CAINIRS || cainMsg->getPacketType() == CAINIRS_IPv6){
+                        if(getDevBatteryPower() >= powerThresh){
+                            double back = 0;
+                            sendCainMsg(cainMsg,2,back);
                         }
                     }else if(cainMsg->getPacketType() == RREQ || cainMsg->getPacketType() == RREQ_IPv6){
                         if(getDevBatteryPower() >= powerThresh){
@@ -755,8 +762,7 @@ void WirelessRouting::sendCainMsg(const Ptr<CAINMSG>& cainmsg, unsigned int time
     }
     EV << "message." << endl;
 
-//    if(!cainmsg->getDestAddr().isUnspecified())
-        sendHeartBeatpkg(cainmsg,addressType->getBroadcastAddress(),timeToLive,delay);
+    sendHeartBeatpkg(cainmsg,addressType->getBroadcastAddress(),timeToLive,delay);
 }
 
 void WirelessRouting::sendSprayMsg(const Ptr<CAINMSG>& cainMsg){
@@ -865,65 +871,78 @@ const Ptr<CHDEF> WirelessRouting::createChDefMsg(){
 const Ptr<CAINMSG> WirelessRouting::createCainMsg(){
     auto cainMsg = makeShared<CAINMSG>();
     EV << "Node " << getSelfIPAddress() << " is now creating a ";
-    if(chAddr == L3Address("0.0.0.0")){
-        cainMsg->setPacketType(usingIpv6 ? CAINREQ_IPv6 : CAINREQ);
-        cainMsg->setDestAddr(addressType->getBroadcastAddress());
-        /*defining the hop destination*/
-        int distMapsize = distMap->size();
-        int hopMapsize = hopMap->size();
-        if(getModuleByPath("simpleNetwork")->par("mlEnable")){
-            if (distMapsize > 0 || hopMapsize > 0){
-                L3Address cain_dest = findHopRL();
-                cainMsg->setCainDestAddr(cain_dest);
-                this->distMapSize = distMapsize;
-                emit(distMapSizeSignal,this->distMapSize);
-            }else
-                cainMsg->setCainDestAddr(addressType->getBroadcastAddress());
-        }else{
-            int chBatt = 0;
-            L3Address neighbAddr = addressType->getUnspecifiedAddress();
-            std::map<L3Address,int>::iterator it = neighbMap->begin();
-            for(;it != neighbMap->end(); it++){
-                if(it->second > chBatt){
-                    chBatt = it->second;
-                    neighbAddr = it->first;
+    if(!irsEnable){
+        if(chAddr == L3Address("0.0.0.0")){
+            cainMsg->setPacketType(usingIpv6 ? CAINREQ_IPv6 : CAINREQ);
+            cainMsg->setDestAddr(addressType->getBroadcastAddress());
+            /*defining the hop destination*/
+            int distMapsize = distMap->size();
+            int hopMapsize = hopMap->size();
+            if(getModuleByPath("simpleNetwork")->par("mlEnable")){
+                if (distMapsize > 0 || hopMapsize > 0){
+                    L3Address cain_dest = findHopRL();
+                    cainMsg->setCainDestAddr(cain_dest);
+                    this->distMapSize = distMapsize;
+                    emit(distMapSizeSignal,this->distMapSize);
+                }else
+                    cainMsg->setCainDestAddr(addressType->getBroadcastAddress());
+            }else{
+                int chBatt = 0;
+                L3Address neighbAddr = addressType->getUnspecifiedAddress();
+                std::map<L3Address,int>::iterator it = neighbMap->begin();
+                for(;it != neighbMap->end(); it++){
+                    if(it->second > chBatt){
+                        chBatt = it->second;
+                        neighbAddr = it->first;
+                    }
                 }
+                respMapSize = neighbMap->size();
+                emit(respMapSizeSignal,this->respMapSize);
+                cainMsg->setCainDestAddr(neighbAddr);
             }
-            respMapSize = neighbMap->size();
-            emit(respMapSizeSignal,this->respMapSize);
-            cainMsg->setCainDestAddr(neighbAddr);
-        }
-        cainMsg->setSeqNum(++reqSeqNum);
-        std::string msgId = "hop"+to_string(reqSeqNum);
-        cainMsg->setMsgId(msgId.c_str());
-        sentMessages->push_back(msgId);
-        reqAck->push_back(reqSeqNum);
-        cainMsg->setHopCount(2);
-        EV << (usingIpv6 ? "CAINREQ_IPv6" : "CAINREQ") << " message" << endl;
-    }else{
-        cainMsg->setPacketType(usingIpv6 ? CAINFWD_IPv6 : CAINFWD);
-        if(!droneAddr.isUnspecified()){
-            cainMsg->setDestAddr(droneAddr);
-            cainMsg->setCainDestAddr(droneAddr);
+            cainMsg->setSeqNum(++reqSeqNum);
+            std::string msgId = "hop"+to_string(reqSeqNum);
+            cainMsg->setMsgId(msgId.c_str());
+            sentMessages->push_back(msgId);
+            reqAck->push_back(reqSeqNum);
+            cainMsg->setHopCount(2);
+            EV << (usingIpv6 ? "CAINREQ_IPv6" : "CAINREQ") << " message" << endl;
         }else{
-            cainMsg->setDestAddr(chAddr);
-            cainMsg->setCainDestAddr(chAddr);
-//            cainMsg->setDestAddr(addressType->getBroadcastAddress());
-//            cainMsg->setCainDestAddr(addressType->getBroadcastAddress());
+            cainMsg->setPacketType(usingIpv6 ? CAINFWD_IPv6 : CAINFWD);
+            if(!droneAddr.isUnspecified()){
+                cainMsg->setDestAddr(droneAddr);
+                cainMsg->setCainDestAddr(droneAddr);
+            }else{
+                cainMsg->setDestAddr(chAddr);
+                cainMsg->setCainDestAddr(chAddr);
+    //            cainMsg->setDestAddr(addressType->getBroadcastAddress());
+    //            cainMsg->setCainDestAddr(addressType->getBroadcastAddress());
+            }
+            cainMsg->setSeqNum(++fwdSeqNum);
+            fwdAck->push_back(fwdSeqNum);
+            cainMsg->setHopCount(1);
+            cainMsg->setDistance(0);
+            EV << (usingIpv6 ? "CAINFWD_IPv6" : "CAINFWD") << " message" << endl;
         }
-        cainMsg->setSeqNum(++fwdSeqNum);
-        fwdAck->push_back(fwdSeqNum);
-        cainMsg->setHopCount(1);
-        cainMsg->setDistance(0);
-        EV << (usingIpv6 ? "CAINFWD_IPv6" : "CAINFWD") << " message" << endl;
+        cainMsg->setHops(0);
+        cainMsg->setChunkLength(usingIpv6 ? B(48) : B(24));
+        cainMsg->setOriginatorAddr(getSelfIPAddress());
+        cainMsg->setSourceAddr(getSelfIPAddress());
+        cainMsg->setTimeInit(simTime());
+        cainMsg->setSenderCoord(baseMobility->getCurrentPosition());
+        cainMsg->setPheromone(this->phero);
+    }else{
+        cainMsg->setPacketType(usingIpv6 ? CAINIRS_IPv6 : CAINIRS);
+        cainMsg->setDestAddr(addressType->getBroadcastAddress());
+        cainMsg->setCainDestAddr(addressType->getBroadcastAddress());
+        cainMsg->setChunkLength(usingIpv6 ? B(48) : B(24));
+        cainMsg->setOriginatorAddr(getSelfIPAddress());
+        cainMsg->setSourceAddr(getSelfIPAddress());
+        cainMsg->setSeqNum(++reqSeqNum);
+        cainMsg->setSenderCoord(baseMobility->getCurrentPosition());
+        cainMsg->setTimeInit(simTime());
+        EV << (usingIpv6 ? "CAINREQ_IPv6" : "CAINREQ") << " message" << endl;
     }
-    cainMsg->setHops(0);
-    cainMsg->setChunkLength(usingIpv6 ? B(48) : B(24));
-    cainMsg->setOriginatorAddr(getSelfIPAddress());
-    cainMsg->setSourceAddr(getSelfIPAddress());
-    cainMsg->setTimeInit(simTime());
-    cainMsg->setSenderCoord(baseMobility->getCurrentPosition());
-    cainMsg->setPheromone(this->phero);
     return cainMsg;
 }
 

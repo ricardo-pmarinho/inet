@@ -317,6 +317,7 @@ private:
     void handleSnooping(const Ptr<SNOOPHB>& snoop, const L3Address& sourceAddr);
     void handleDroneSnooping(const Ptr<SNOOPHB> snoop);
     void handleSatelliteSnooping(const Ptr<SNOOPHB> snoop);
+    void handleCainIRS(const Ptr<CAINMSG>& cainmsg);
     void handleCainFWD(const Ptr<CAINMSG>& cainmsg);
     void handleDroneMsg(const Ptr<DRONEMSG>& droneMsg);
     void sendSnooping(const Ptr<SNOOPHB>& snoop, unsigned int timeToLive);

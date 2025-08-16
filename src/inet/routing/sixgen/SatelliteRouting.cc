@@ -821,6 +821,12 @@ void SatelliteRouting::processPacket(Packet *packet)
             handleSnooping(CHK(dynamicPtrCast<SNOOPHB>(hbPacket->dupShared())), sourceAddr);
             delete packet;
             return;
+        case CAINIRS:
+        case CAINIRS_IPv6:
+            EV << "CAIN IRS message arrived" << endl;
+            handleCainIRS(CHK(dynamicPtrCast<CAINMSG>(hbPacket->dupShared())));
+            delete packet;
+            return;
         case CAINFWD:
         case CAINFWD_IPv6:
             EV << "CAIN FWD message arrived" << endl;
@@ -880,6 +886,18 @@ void SatelliteRouting::handleStartOperation(LifecycleOperation *operation)
     scheduleAt(simTime() + 1.5, counterTimer);
 
 //    scheduleAt(simTime()+0.7, cainFwdTimer);handleCainFWD
+}
+
+void SatelliteRouting::handleCainIRS(const Ptr<CAINMSG>& droneMsg){
+    EV << "Drone message arriving with address: " << droneMsg->getSourceAddr() << endl;
+    EV << "This addr: " << getSelfIPAddress() << endl;
+    Coord ueCoord = droneMsg->getSenderCoord();
+    Coord thisCoord = baseMobility->getCurrentPosition();
+    satDist = thisCoord.distance(ueCoord);
+    emit(satDistSignal,satDist);
+
+    recSatMsg++;
+    emit(recSatMsgSignal,recSatMsg);
 }
 
 void SatelliteRouting::handleCainFWD(const Ptr<CAINMSG>& cainmsg){

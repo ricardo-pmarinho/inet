@@ -13,7 +13,7 @@
 // along with this program.  If not, see http://www.gnu.org/licenses/.
 // 
 
-#include "DroneRouting.h"
+#include "IrsRouting.h"
 #include "inet/common/IProtocolRegistrationListener.h"
 #include "inet/common/ModuleAccess.h"
 #include "inet/common/ProtocolTag_m.h"
@@ -35,13 +35,13 @@
 
 
 namespace inet {
-namespace dronerouting {
+namespace irsrouting {
 
-Define_Module(DroneRouting);
+Define_Module(IrsRouting);
 
 const int KIND_DELAYEDSEND = 100;
 
-void DroneRouting::initialize(int stage)
+void IrsRouting::initialize(int stage)
 {
 
     if (stage == INITSTAGE_ROUTING_PROTOCOLS)
@@ -103,25 +103,12 @@ void DroneRouting::initialize(int stage)
         host->subscribe(linkBrokenSignal, this);
         usingIpv6 = (routingTable->getRouterIdAsGeneric().getType() == L3Address::IPv6);
         neighborBattery = new std::map<L3Address,int>();
-//        baseMobility = check_and_cast<BonnMotionMobility*>(host->getSubmodule("mobility"));
-        baseMobility = check_and_cast<MassMobility*>(host->getSubmodule("mobility"));
+        baseMobility = check_and_cast<StaticLinearMobility*>(host->getSubmodule("mobility"));
         energyStorage = check_and_cast<SimpleEpEnergyStorage*>(host->getSubmodule("energyStorage"));
         energyManagement = check_and_cast<SimpleEpEnergyManagement*>(host->getSubmodule("energyManagement"));
         antennaAddr = addressType->getUnspecifiedAddress();
-        hop_range = 0;
-        qtd_ranges = 3;
-        send_prob = 50;
-        respMap = new map<pair<L3Address,int>, pair<L3Address,int>>();
-        distMap = new map<L3Address,double>();
+        hostDistMap = new map<L3Address,double>();
         droneDistMap = new map<L3Address,double>();
-        neighbMap = new map<L3Address,int>();
-        centralityMap = new map<L3Address,int>();
-        newConnectedDevs = new map<L3Address,int>();
-        connectedDevs = new map<L3Address,pair<int,bool>>();
-        recFwdMessages = new map<L3Address,std::string>();
-        neighPherom = new map<L3Address,double>();
-        sentMessages = new list<std::string>();
-        leachNeigh = new std::vector<L3Address>();
 
         routes = new map<pair<L3Address,L3Address>,pair<L3Address,int>>();
         revRoute = new map<pair<L3Address,L3Address>,L3Address>();
@@ -187,12 +174,11 @@ void DroneRouting::initialize(int stage)
                 droneQMatrix[i][j]=0;
             }
         }
-        droneNetwork = droneNetwork->createDnn(2,2,3,1);
 
     }
 }
 
-void DroneRouting::receiveSignal(cComponent *source, simsignal_t signalID, cObject *obj, cObject *details)
+void IrsRouting::receiveSignal(cComponent *source, simsignal_t signalID, cObject *obj, cObject *details)
 {
     EV << "receive signal" << endl;
 //    Enter_Method("receiveChangeNotification");
@@ -221,7 +207,7 @@ void DroneRouting::receiveSignal(cComponent *source, simsignal_t signalID, cObje
 }
 
 
-void DroneRouting::handleMessageWhenUp(cMessage *msg)
+void IrsRouting::handleMessageWhenUp(cMessage *msg)
 {
     if (msg->isSelfMessage()) {
         if (auto waitForRrep = dynamic_cast<WaitForRrep *>(msg))
@@ -237,8 +223,6 @@ void DroneRouting::handleMessageWhenUp(cMessage *msg)
 //            scheduleAt(simTime()+5, droneTimer);
 //        }
         else if (msg == counterTimer) {
-            auto snoopPkg = createSnoopMsg();
-            sendSnooping(snoopPkg, 1);
             scheduleAt(simTime() + 5, counterTimer);
         }else if (msg == blacklistTimer)
             handleBlackListTimer();
@@ -256,7 +240,7 @@ void DroneRouting::handleMessageWhenUp(cMessage *msg)
 }
 
 
-void DroneRouting::handleWaitForRREP(WaitForRrep *rrepTimer)
+void IrsRouting::handleWaitForRREP(WaitForRrep *rrepTimer)
 {
     EV_INFO << "We didn't get any Route Reply within RREP timeout" << endl;
     L3Address destAddr = rrepTimer->getDestAddr();
@@ -279,7 +263,7 @@ void DroneRouting::handleWaitForRREP(WaitForRrep *rrepTimer)
 //        sendSnooping(rreq, 0);
 }
 
-void DroneRouting::handleBlackListTimer()
+void IrsRouting::handleBlackListTimer()
 {
     simtime_t nextTime = SimTime::getMaxTime();
 
@@ -299,7 +283,7 @@ void DroneRouting::handleBlackListTimer()
         scheduleAt(nextTime, blacklistTimer);
 }
 
-void DroneRouting::sendHelloMessagesIfNeeded()
+void IrsRouting::sendHelloMessagesIfNeeded()
 {
     ASSERT(useHelloMessages);
     // Every HELLO_INTERVAL milliseconds, the node checks whether it has
@@ -331,7 +315,7 @@ void DroneRouting::sendHelloMessagesIfNeeded()
     scheduleAt(simTime() + helloInterval - *periodicJitter, helloMsgTimer);
 }
 
-void DroneRouting::handleRREPACKTimer()
+void IrsRouting::handleRREPACKTimer()
 {
     // when a node detects that its transmission of a RREP message has failed,
     // it remembers the next-hop of the failed RREP in a "blacklist" set.
@@ -344,7 +328,7 @@ void DroneRouting::handleRREPACKTimer()
         scheduleAt(simTime() + blacklistTimeout, blacklistTimer);
 }
 
-const Ptr<SNOOPHB> DroneRouting::createHelloMessage()
+const Ptr<SNOOPHB> IrsRouting::createHelloMessage()
 {
     // called a Hello message, with the RREP
     // message fields set as follows:
@@ -369,7 +353,7 @@ const Ptr<SNOOPHB> DroneRouting::createHelloMessage()
     return helloMessage;
 }
 
-INetfilter::IHook::Result DroneRouting::ensureRouteForDatagram(Packet *datagram)
+INetfilter::IHook::Result IrsRouting::ensureRouteForDatagram(Packet *datagram)
 {
     const auto& networkHeader = getNetworkProtocolHeader(datagram);
     const L3Address& destAddr = networkHeader->getDestinationAddress();
@@ -423,7 +407,7 @@ INetfilter::IHook::Result DroneRouting::ensureRouteForDatagram(Packet *datagram)
     }
 }
 
-void DroneRouting::expungeRoutes()
+void IrsRouting::expungeRoutes()
 {
     for (int i = 0; i < routingTable->getNumRoutes(); i++) {
         IRoute *route = routingTable->getRoute(i);
@@ -458,7 +442,7 @@ void DroneRouting::expungeRoutes()
     scheduleExpungeRoutes();
 }
 
-void DroneRouting::scheduleExpungeRoutes()
+void IrsRouting::scheduleExpungeRoutes()
 {
     simtime_t nextExpungeTime = SimTime::getMaxTime();
     for (int i = 0; i < routingTable->getNumRoutes(); i++) {
@@ -488,19 +472,14 @@ void DroneRouting::scheduleExpungeRoutes()
     }
 }
 
-void DroneRouting::startRouteDiscovery(const L3Address& target, unsigned timeToLive)
+void IrsRouting::startRouteDiscovery(const L3Address& target, unsigned timeToLive)
 {
     EV_INFO << "Starting route discovery with originator " << getSelfIPAddress() << " and destination " << target << endl;
     ASSERT(!hasOngoingRouteDiscovery(target));
 }
 
-void DroneRouting::sendSnooping(const Ptr<SNOOPHB>& snoop, unsigned int timeToLive){
-    EV << "sending snooping message" << endl;
-//    sendHeartBeatpkg(snoop,addressType->getBroadcastAddress(),timeToLive,*jitterPar);
-    sendHeartBeatpkg(snoop,addressType->getBroadcastAddress(),timeToLive,0);
-}
 
-void DroneRouting::sendHeartBeatpkg(const Ptr<HeartBeat>& hbpacket, const L3Address& destAddr, unsigned int timeToLive, double delay){
+void IrsRouting::sendHeartBeatpkg(const Ptr<HeartBeat>& hbpacket, const L3Address& destAddr, unsigned int timeToLive, double delay){
     ASSERT(timeToLive != 0);
     EV << "sending hb message" << endl;
 
@@ -528,28 +507,7 @@ void DroneRouting::sendHeartBeatpkg(const Ptr<HeartBeat>& hbpacket, const L3Addr
     }
 }
 
-const Ptr<SNOOPHB> DroneRouting::createSnoopMsg()
-{
-    auto snoopPkg = makeShared<SNOOPHB>();
-    Coord coord;
-    int batteryPercent = 100;
-    coord = Coord(baseMobility->getCurrentPosition());
-    batteryPercent = (int)round(unit(energyStorage->getResidualEnergyCapacity()/energyStorage->getNominalEnergyCapacity()).get() * 100);
-    Coord senderCoord = coord;
-    snoopPkg->setPacketType(usingIpv6 ? SNP_IPv6 : SNP);
-    snoopPkg->setChunkLength(usingIpv6 ? B(48) : B(24));
-    snoopPkg->setHopCount(0);
-    snoopPkg->setOriginatorAddr(getSelfIPAddress());
-    snoopPkg->setDestAddr(addressType->getBroadcastAddress());
-    snoopPkg->setMsgCoord(senderCoord);
-    snoopPkg->setBatteryPercent(batteryPercent);
-    snoopPkg->setTwoHop(false);
-    snoopPkg->setChDist(chDist);
-    snoopPkg->setNodeName(this->getParentModule()->getName());
-    return snoopPkg;
-}
-
-const Ptr<DRONEMSG> DroneRouting::createDroneMsg(L3Address dest){
+const Ptr<DRONEMSG> IrsRouting::createDroneMsg(L3Address dest){
     auto droneMsg = makeShared<DRONEMSG>();
     droneMsg->setPacketType(usingIpv6 ? DRONE_IPv6: DRONE);
     droneMsg->setChunkLength(usingIpv6 ? B(48) : B(24));
@@ -562,124 +520,30 @@ const Ptr<DRONEMSG> DroneRouting::createDroneMsg(L3Address dest){
 
 
 
-void DroneRouting::handleSnooping(const Ptr<SNOOPHB>& snoop, const L3Address& sourceAddr)
+void IrsRouting::handleSnooping(const Ptr<SNOOPHB>& snoop, const L3Address& sourceAddr)
 {
     if(strcmp(snoop->getNodeName(),"drone")==0){
         handleDroneSnooping(snoop);
-    }else if(strcmp(snoop->getNodeName(),"satellite")==0){
-        handleSatelliteSnooping(snoop);
+    }else if(strcmp(snoop->getNodeName(),"host")==0){
+        handleHostSnooping(snoop);
     }else
         return;
 }
 
-void DroneRouting::handleCainIRS(const Ptr<CAINMSG>& cainmsg){
-    calcDelayMean(cainmsg->getTimeInit());
-    auto droneMsg = createDroneMsg(addressType->getBroadcastAddress());
-    if(satelliteAddr.isUnspecified()){
-        int droneDistMapsize = droneDistMap->size();
-        if(droneDistMapsize!=0){
-            this->gat->calcAttention();
-            map<L3Address,double>::iterator it = droneDistMap->begin();
-            for(;it != droneDistMap->end(); it++){
-                bool decision = calculateDroneDecision(it->first);
-                decision = true;
-                if(decision){
-                    droneMsg->setDestAddr(it->first);
-                    break;
-                }
-            }
-        }
-    }else{
-        droneMsg->setDestAddr(satelliteAddr);
-
-        Coord ueCoord = cainmsg->getSenderCoord();
-        Coord thisCoord = baseMobility->getCurrentPosition();
-        droneDist = thisCoord.distance(ueCoord);
-        emit(droneDistSignal,droneDist);
-
-        recDroneMsg++;
-        emit(recDroneMsgSignal,recDroneMsg);
-    }
-    sendHeartBeatpkg(droneMsg,addressType->getBroadcastAddress(),1,0);
+void IrsRouting::handleCainIRS(const Ptr<CAINMSG>& cainmsg){
+    sendHeartBeatpkg(cainmsg,addressType->getBroadcastAddress(),1,0);
 }
 
-void DroneRouting::handleCainFWD(const Ptr<CAINMSG>& cainmsg){
+void IrsRouting::handleCainFWD(const Ptr<CAINMSG>& cainmsg){
     EV << "Destined to: " << cainmsg->getDestAddr() << ", initiated by: " << cainmsg->getOriginatorAddr() <<
             ", sent by: " << cainmsg->getSourceAddr() << endl;
     EV << "CAIN destination: " << cainmsg->getCainDestAddr() << endl;
     EV << "Self ipAddr: " << getSelfIPAddress() << endl;
 
 
-    calcDelayMean(cainmsg->getTimeInit());
-
-    if(this->getSelfIPAddress() == cainmsg->getDestAddr()){
-        auto droneMsg = createDroneMsg(addressType->getBroadcastAddress());
-        EV << "Drone receiving message" << endl;
-
-        if(satelliteAddr.isUnspecified()){
-            int droneDistMapsize = droneDistMap->size();
-            if(droneDistMapsize!=0){
-                this->gat->calcAttention();
-                map<L3Address,double>::iterator it = droneDistMap->begin();
-                for(;it != droneDistMap->end(); it++){
-                    bool decision = calculateDroneDecision(it->first);
-                    decision = true;
-                    if(decision){
-                        droneMsg->setDestAddr(it->first);
-                        break;
-                    }
-                }
-            }
-        }else{
-            droneMsg->setDestAddr(satelliteAddr);
-
-            Coord ueCoord = cainmsg->getSenderCoord();
-            Coord thisCoord = baseMobility->getCurrentPosition();
-            droneDist = thisCoord.distance(ueCoord);
-            emit(droneDistSignal,droneDist);
-
-            recDroneMsg++;
-            emit(recDroneMsgSignal,recDroneMsg);
-        }
-        sendHeartBeatpkg(droneMsg,addressType->getBroadcastAddress(),1,0);
-    }
 }
 
-
-void DroneRouting::handleDroneMsg(const Ptr<DRONEMSG>& droneMsg){
-    EV << "Drone message arriving with address: " << droneMsg->getSourceAddr() << endl;
-    EV << "This addr: " << getSelfIPAddress() << endl;
-    EV << "Destination: " << droneMsg->getDestAddr() << endl;
-    if(this->getSelfIPAddress() == droneMsg->getDestAddr()){
-        if(satelliteAddr.isUnspecified()){
-            int droneDistMapsize = droneDistMap->size();
-            if(droneDistMapsize!=0){
-                this->gat->calcAttention();
-                map<L3Address,double>::iterator it = droneDistMap->begin();
-                for(;it != droneDistMap->end(); it++){
-                    bool decision = calculateDroneDecision(it->first);
-                    if(decision){
-                        droneMsg->setDestAddr(it->first);
-                        break;
-                    }
-                }
-            }
-        }else{
-            droneMsg->setDestAddr(satelliteAddr);
-
-            Coord ueCoord = droneMsg->getSenderCoord();
-            Coord thisCoord = baseMobility->getCurrentPosition();
-            droneDist = thisCoord.distance(ueCoord);
-            emit(droneDistSignal,droneDist);
-
-            recDroneMsg++;
-            emit(recDroneMsgSignal,recDroneMsg);
-        }
-        sendHeartBeatpkg(droneMsg,addressType->getBroadcastAddress(),1,0);
-    }
-}
-
-void DroneRouting::handleDroneSnooping(const Ptr<SNOOPHB> snoop)
+void IrsRouting::handleDroneSnooping(const Ptr<SNOOPHB> snoop)
 {
     EV << "Drone snoop message arriving with address: " << snoop->getOriginatorAddr() << endl;
     EV << "This addr: " << getSelfIPAddress() << endl;
@@ -691,18 +555,21 @@ void DroneRouting::handleDroneSnooping(const Ptr<SNOOPHB> snoop)
     return;
 }
 
-void DroneRouting::handleSatelliteSnooping(const Ptr<SNOOPHB> snoop)
+void IrsRouting::handleHostSnooping(const Ptr<SNOOPHB> snoop)
 {
-    satelliteAddr = snoop->getOriginatorAddr();
+    Coord thisCoord = Coord(baseMobility->getCurrentPosition());
+    Coord senderCoord = snoop->getMsgCoord();
+    double dist = thisCoord.distance(senderCoord);
+    hostDistMap->operator [](snoop->getOriginatorAddr()) = dist;
     return;
 }
 
-bool DroneRouting::hasOngoingRouteDiscovery(const L3Address& target)
+bool IrsRouting::hasOngoingRouteDiscovery(const L3Address& target)
 {
     return waitForRREPTimers.find(target) != waitForRREPTimers.end();
 }
 
-INetfilter::IHook::Result DroneRouting::datagramForwardHook(Packet *datagram)
+INetfilter::IHook::Result IrsRouting::datagramForwardHook(Packet *datagram)
 {
     // TODO: Implement: Actions After Reboot
     // If the node receives a data packet for some other destination, it SHOULD
@@ -776,7 +643,7 @@ INetfilter::IHook::Result DroneRouting::datagramForwardHook(Packet *datagram)
     return ACCEPT;
 }
 
-void DroneRouting::sendRERRWhenNoRouteToForward(const L3Address& unreachableAddr)
+void IrsRouting::sendRERRWhenNoRouteToForward(const L3Address& unreachableAddr)
 {
     if (rerrCount >= rerrRatelimit) {
         EV_WARN << "A node should not generate more than RERR_RATELIMIT RERR messages per second. Canceling sending RERR" << endl;
@@ -803,7 +670,7 @@ void DroneRouting::sendRERRWhenNoRouteToForward(const L3Address& unreachableAddr
     sendHeartBeatpkg(rerr, addressType->getBroadcastAddress(), 1,0);
 }
 
-void DroneRouting::handleLinkBreakSendRERR(const L3Address& unreachableAddr)
+void IrsRouting::handleLinkBreakSendRERR(const L3Address& unreachableAddr)
 {
     // For case (i), the node first makes a list of unreachable destinations
     // consisting of the unreachable neighbor and any additional
@@ -891,7 +758,7 @@ void DroneRouting::handleLinkBreakSendRERR(const L3Address& unreachableAddr)
     sendHeartBeatpkg(rerr, addressType->getBroadcastAddress(), 1, 0);
 }
 
-const Ptr<Rerr> DroneRouting::createRERR(const std::vector<UnreachableNode>& unreachableNodes)
+const Ptr<Rerr> IrsRouting::createRERR(const std::vector<UnreachableNode>& unreachableNodes)
 {
     auto rerr = makeShared<Rerr>(); // TODO: "AODV-RERR");
     rerr->setPacketType(usingIpv6 ? def : def);
@@ -911,7 +778,7 @@ const Ptr<Rerr> DroneRouting::createRERR(const std::vector<UnreachableNode>& unr
     return rerr;
 }
 
-bool DroneRouting::updateValidRouteLifeTime(const L3Address& destAddr, simtime_t lifetime)
+bool IrsRouting::updateValidRouteLifeTime(const L3Address& destAddr, simtime_t lifetime)
 {
     IRoute *route = routingTable->findBestMatchingRoute(destAddr);
     if (route && route->getSource() == this) {
@@ -926,7 +793,7 @@ bool DroneRouting::updateValidRouteLifeTime(const L3Address& destAddr, simtime_t
     return false;
 }
 
-void DroneRouting::processPacket(Packet *packet)
+void IrsRouting::processPacket(Packet *packet)
 {
     L3Address sourceAddr = packet->getTag<L3AddressInd>()->getSrcAddress();
     // KLUDGE: I added this -1 after TTL decrement has been moved in Ipv4
@@ -955,31 +822,25 @@ void DroneRouting::processPacket(Packet *packet)
             handleCainFWD(CHK(dynamicPtrCast<CAINMSG>(hbPacket->dupShared())));
             delete packet;
             return;
-        case DRONE:
-        case DRONE_IPv6:
-            EV << "Drone message arriving" << endl;
-            handleDroneMsg(CHK(dynamicPtrCast<DRONEMSG>(hbPacket->dupShared())));
-            delete packet;
-            return;
         default:
             delete packet;
             return;
     }
 }
 
-void DroneRouting::socketErrorArrived(UdpSocket *socket, Indication *indication)
+void IrsRouting::socketErrorArrived(UdpSocket *socket, Indication *indication)
 {
     EV_WARN << "Ignoring UDP error report " << indication->getName() << endl;
     delete indication;
 }
 
-void DroneRouting::socketClosed(UdpSocket *socket)
+void IrsRouting::socketClosed(UdpSocket *socket)
 {
     if (operationalState == State::STOPPING_OPERATION)
         startActiveOperationExtraTimeOrFinish(par("stopOperationExtraTime"));
 }
 
-void DroneRouting::handleStartOperation(LifecycleOperation *operation)
+void IrsRouting::handleStartOperation(LifecycleOperation *operation)
 {
 
     rebootTime = simTime();
@@ -999,7 +860,7 @@ void DroneRouting::handleStartOperation(LifecycleOperation *operation)
     scheduleAt(simTime() + 1.2, counterTimer);
 }
 
-void DroneRouting::calcDelayMean(simtime_t msgInit){
+void IrsRouting::calcDelayMean(simtime_t msgInit){
     simtime_t timeDiff = simTime() - msgInit;
     meanDelay*=qtdMsg;
     meanDelay+=timeDiff;
@@ -1007,7 +868,7 @@ void DroneRouting::calcDelayMean(simtime_t msgInit){
 
 }
 
-void DroneRouting::updateRoutingTable(IRoute *route, const L3Address& nextHop, unsigned int hopCount, bool hasValidDestNum, unsigned int destSeqNum, bool isActive, simtime_t lifeTime)
+void IrsRouting::updateRoutingTable(IRoute *route, const L3Address& nextHop, unsigned int hopCount, bool hasValidDestNum, unsigned int destSeqNum, bool isActive, simtime_t lifeTime)
 {
     EV_DETAIL << "Updating existing route: " << route << endl;
 
@@ -1028,7 +889,7 @@ void DroneRouting::updateRoutingTable(IRoute *route, const L3Address& nextHop, u
 }
 
 
-IRoute *DroneRouting::createRoute(const L3Address& destAddr, const L3Address& nextHop,
+IRoute *IrsRouting::createRoute(const L3Address& destAddr, const L3Address& nextHop,
         unsigned int hopCount, bool hasValidDestNum, unsigned int destSeqNum,
         bool isActive, simtime_t lifeTime)
 {
@@ -1066,19 +927,19 @@ IRoute *DroneRouting::createRoute(const L3Address& destAddr, const L3Address& ne
     return newRoute;
 }
 
-void DroneRouting::handleStopOperation(LifecycleOperation *operation)
+void IrsRouting::handleStopOperation(LifecycleOperation *operation)
 {
     socket.close();
     clearState();
 }
 
-void DroneRouting::handleCrashOperation(LifecycleOperation *operation)
+void IrsRouting::handleCrashOperation(LifecycleOperation *operation)
 {
     socket.destroy();
     clearState();
 }
 
-void DroneRouting::clearState()
+void IrsRouting::clearState()
 {
     rerrCount = rreqCount = rreqId = sequenceNum = 0;
     addressToRreqRetries.clear();
@@ -1102,12 +963,12 @@ void DroneRouting::clearState()
         cancelEvent(counterTimer);
 }
 
-L3Address DroneRouting::getSelfIPAddress() const
+L3Address IrsRouting::getSelfIPAddress() const
 {
     return routingTable->getRouterIdAsGeneric();
 }
 
-void DroneRouting::delayDatagram(Packet *datagram)
+void IrsRouting::delayDatagram(Packet *datagram)
 {
     const auto& networkHeader = getNetworkProtocolHeader(datagram);
     EV_DETAIL << "Queuing datagram, source " << networkHeader->getSourceAddress() << ", destination " << networkHeader->getDestinationAddress() << endl;
@@ -1115,14 +976,14 @@ void DroneRouting::delayDatagram(Packet *datagram)
     targetAddressToDelayedPackets.insert(std::pair<L3Address, Packet *>(target, datagram));
 }
 
-void DroneRouting::socketDataArrived(UdpSocket *socket, Packet *packet)
+void IrsRouting::socketDataArrived(UdpSocket *socket, Packet *packet)
 {
     // process incoming packet
     processPacket(packet);
 }
 
 
-void DroneRouting::cancelRouteDiscovery(const L3Address& destAddr)
+void IrsRouting::cancelRouteDiscovery(const L3Address& destAddr)
 {
     ASSERT(hasOngoingRouteDiscovery(destAddr));
     auto lt = targetAddressToDelayedPackets.lower_bound(destAddr);
@@ -1138,75 +999,17 @@ void DroneRouting::cancelRouteDiscovery(const L3Address& destAddr)
     waitForRREPTimers.erase(waitRREPIter);
 }
 
-int DroneRouting::getDevBatteryPower(){
+int IrsRouting::getDevBatteryPower(){
     return (int)round(unit(energyStorage->getResidualEnergyCapacity()/energyStorage->getNominalEnergyCapacity()).get() * 100);
 }
 
-int DroneRouting::get_drone_coverage_state(L3Address cain_dest){
-    double dist = droneDistMap->at(cain_dest);
-    for(int i=0;i<qtd_ranges;i++){
-        if(dist<=(i+1)*(com_range/qtd_ranges)){
-            return i;
-        }
-    }
-    return 0;
-}
-
-
-void DroneRouting::calculate_drone_coverage_reward(int state,bool decision,L3Address cain_dest){
-    double percent;
-    if(rl_type == "Euclidean1" || rl_type == "Euclidean2"  ||
-                rl_type == "Euclidean3"){
-        double dist = droneDistMap->at(cain_dest);
-        for(int i=0;i<qtd_ranges;i++){
-            if(dist<=(i+1)*(com_range/qtd_ranges)){
-                percent=dist/((i+1)*(com_range/qtd_ranges));
-                percent*=100;
-                break;
-            }
-        }
-    }else if(rl_type == "Hop1" || rl_type == "Hop2"  ||
-            rl_type == "Hop3"){
-
-        long hop = hopMap->at(cain_dest);
-        for(int i=0;i<qtd_ranges;i++){
-            if(hop<=(i+1)*(hop_range/qtd_ranges)){
-                percent=hop/((i+1)*(hop_range/qtd_ranges));
-                percent*=100;
-                break;
-            }
-        }
-    }
-
-    switch (state) {
-        case 0:
-            stateMatrix[state][decision]->at(0)*=n_s0;
-            stateMatrix[state][decision]->at(0)+=percent;
-            n_s0++;
-            stateMatrix[state][decision]->at(0)/=n_s0;
-            break;
-        case 1:
-            stateMatrix[state][decision]->at(1)*=n_s1;
-            stateMatrix[state][decision]->at(1)+=percent;
-            n_s1++;
-            stateMatrix[state][decision]->at(1)/=n_s1;
-            break;
-        case 2:
-            stateMatrix[state][decision]->at(2)*=n_s2;
-            stateMatrix[state][decision]->at(2)+=percent;
-            n_s2++;
-            stateMatrix[state][decision]->at(2)/=n_s2;
-            break;
-    }
-}
-
-bool DroneRouting::sendMessageML(int state){
+bool IrsRouting::sendMessageML(int state){
     if(qMatrix[state][0]>=qMatrix[state][1])//state0 (send) is the best option
         return true;
     return false;
 }
 
-void DroneRouting::calculate_drone_q_matrix(){
+void IrsRouting::calculate_drone_q_matrix(){
     float discount_rate = 0.95;
     int n_interations = 100;
 
@@ -1240,193 +1043,64 @@ void DroneRouting::calculate_drone_q_matrix(){
     }
 }
 
-bool DroneRouting::calculateDroneDecision(L3Address cainDest){
-    bool sendDecision;
-    for(int i = 0; i<100; i++){
-        int state = get_drone_coverage_state(cainDest);
-        double dnnDist;
-        dnnDist = calculateDnnDist(state, droneDistMap->at(cainDest),rl_type);
-        double attention = this->gat->getAttention(cainDest);
-
-        std::vector<bool> *decisionVect = droneNetwork->calculateDroneDnn(attention,dnnDist);
-        int decision;
-        if(decisionVect->operator [](0)){//true
-            if(decisionVect->operator [](1))//true-true
-                decision=3;
-            else//true-false
-                decision=2;
-        }else{//false
-            if(decisionVect->operator [](1))//false-true
-                decision=1;
-            else//false-false
-                decision=0;
-        }
-        calculate_drone_coverage_reward(state, decision, cainDest);
-        calculate_drone_q_matrix();
-        float result = droneQMatrix[state][decision];
-    }
-    return sendDecision;
-}
-
-double DroneRouting::calculateDnnDist(int state, double dist, std::string rl_type){
-    if(rl_type == "Euclidean1" || rl_type == "Hop1"){
-        //dist-state to normalize the distance
-        double distPercentage = (dist-state)/qtd_ranges;
-        return distPercentage;
-    }
-    if(rl_type == "Euclidean2" || rl_type == "Hop2"){
-        double avgDistance;
-        if(rl_type == "Euclidean2")
-            avgDistance = (com_range/qtd_ranges)/2;
-        else
-            avgDistance = (hop_range/qtd_ranges)/2;
-        //dist-state to normalize the distance
-        double distPercentage = (dist-state-avgDistance);
-        return 1/distPercentage;
-    }
-    if(rl_type == "Euclidean3" || rl_type == "Hop3"){
-        //dist-state to normalize the distance
-        return (dist-state)/qtd_ranges;
-    }
-    return 0.0;
-}
-
-void DroneRouting::create_reward_matrix(){
+void IrsRouting::create_reward_matrix(){
     vector<float>* a0;
     vector<float>* a1;
-    if(rl_type == "Euclidean1" || rl_type == "Hop1"){
-        //higher distance/hop
-        //a0 -> send a1 not send
-        //s0 -> closer s1 -> median s2 ->further
-        a0 = new vector<float>();
-        a1 = new vector<float>();
 
-        a0->push_back(-100);
-        a0->push_back(-50);
-        a0->push_back(0);
-        a1->push_back(100);
-        a1->push_back(50);
-        a1->push_back(0);
-        rewardMatrix[0][0]=a0;
-        rewardMatrix[0][1]=a1;
-        rewardMatrix[0][2]=a0;
-        rewardMatrix[0][3]=a1;
+    //higher distance/hop
+    //a0 -> send a1 not send
+    //s0 -> closer s1 -> median s2 ->further
+    a0 = new vector<float>();
+    a1 = new vector<float>();
 
-        a0 = new vector<float>();
-        a1 = new vector<float>();
+    a0->push_back(-100);
+    a0->push_back(-50);
+    a0->push_back(0);
+    a1->push_back(100);
+    a1->push_back(50);
+    a1->push_back(0);
+    rewardMatrix[0][0]=a0;
+    rewardMatrix[0][1]=a1;
+    rewardMatrix[0][2]=a0;
+    rewardMatrix[0][3]=a1;
 
-        a0->push_back(0);
-        a0->push_back(50);
-        a0->push_back(100);
-        a1->push_back(0);
-        a1->push_back(-50);
-        a1->push_back(-100);
-        rewardMatrix[1][0]=a0;
-        rewardMatrix[1][1]=a1;
-        rewardMatrix[1][2]=a0;
-        rewardMatrix[1][3]=a1;
+    a0 = new vector<float>();
+    a1 = new vector<float>();
 
-        a0 = new vector<float>();
-        a1 = new vector<float>();
+    a0->push_back(0);
+    a0->push_back(50);
+    a0->push_back(100);
+    a1->push_back(0);
+    a1->push_back(-50);
+    a1->push_back(-100);
+    rewardMatrix[1][0]=a0;
+    rewardMatrix[1][1]=a1;
+    rewardMatrix[1][2]=a0;
+    rewardMatrix[1][3]=a1;
 
-        a0->push_back(0);
-        a0->push_back(50);
-        a0->push_back(100);
-        a1->push_back(0);
-        a1->push_back(-50);
-        a1->push_back(-100);
-        rewardMatrix[2][0]=a0;
-        rewardMatrix[2][1]=a1;
-        rewardMatrix[2][2]=a0;
-        rewardMatrix[2][3]=a1;
-    } else if(rl_type == "Euclidean2" || rl_type == "Hop2"){
-        //higher distance/hop
-        //a0 -> send a1 not send
-        //s0 -> closer s1 -> median s2 ->further
-        a0 = new vector<float>();
-        a1 = new vector<float>();
+    a0 = new vector<float>();
+    a1 = new vector<float>();
 
-        a0->push_back(100);
-        a0->push_back(50);
-        a0->push_back(0);
-        a1->push_back(-100);
-        a1->push_back(-50);
-        a1->push_back(0);
-        rewardMatrix[0][0]=a0;
-        rewardMatrix[0][1]=a1;
+    a0->push_back(0);
+    a0->push_back(50);
+    a0->push_back(100);
+    a1->push_back(0);
+    a1->push_back(-50);
+    a1->push_back(-100);
+    rewardMatrix[2][0]=a0;
+    rewardMatrix[2][1]=a1;
+    rewardMatrix[2][2]=a0;
+    rewardMatrix[2][3]=a1;
 
-        a0 = new vector<float>();
-        a1 = new vector<float>();
-
-        a0->push_back(0);
-        a0->push_back(50);
-        a0->push_back(100);
-        a1->push_back(0);
-        a1->push_back(-50);
-        a1->push_back(-100);
-        rewardMatrix[1][0]=a0;
-        rewardMatrix[1][1]=a1;
-
-        a0 = new vector<float>();
-        a1 = new vector<float>();
-
-        a0->push_back(0);
-        a0->push_back(-50);
-        a0->push_back(-100);
-        a1->push_back(0);
-        a1->push_back(50);
-        a1->push_back(100);
-        rewardMatrix[2][0]=a0;
-        rewardMatrix[2][1]=a1;
-    }else if(rl_type == "Euclidean3" || rl_type == "Hop3"){
-        //higher distance/hop
-        //a0 -> send a1 not send
-        //s0 -> closer s1 -> median s2 ->further
-        a0 = new vector<float>();
-        a1 = new vector<float>();
-
-        a0->push_back(50);
-        a0->push_back(50);
-        a0->push_back(0);
-        a1->push_back(-50);
-        a1->push_back(-50);
-        a1->push_back(0);
-        rewardMatrix[0][0]=a0;
-        rewardMatrix[0][1]=a1;
-
-        a0 = new vector<float>();
-        a1 = new vector<float>();
-
-        a0->push_back(0);
-        a0->push_back(100);
-        a0->push_back(100);
-        a1->push_back(0);
-        a1->push_back(-100);
-        a1->push_back(-100);
-        rewardMatrix[1][0]=a0;
-        rewardMatrix[1][1]=a1;
-
-        a0 = new vector<float>();
-        a1 = new vector<float>();
-
-        a0->push_back(0);
-        a0->push_back(50);
-        a0->push_back(50);
-        a1->push_back(0);
-        a1->push_back(-50);
-        a1->push_back(-50);
-        rewardMatrix[2][0]=a0;
-        rewardMatrix[2][1]=a1;
-    }
 }
 
 
-DroneRouting::DroneRouting() {
+IrsRouting::IrsRouting() {
     // TODO Auto-generated constructor stub
 
 }
 
-DroneRouting::~DroneRouting() {
+IrsRouting::~IrsRouting() {
 //    clearState();
 //    delete helloMsgTimer;
 //    delete expungeTimer;

@@ -55,6 +55,7 @@ enum heartBeatType
     LEACH = 20;
     DRONE = 21;
     SAT = 22;
+    CAINIRS = 23;
     SNP_IPv6 = 101;
     RESP_IPv6 = 102;
     CAINREQ_IPv6 = 103;
@@ -77,6 +78,7 @@ enum heartBeatType
     LEACH_IPv6 = 120;
     DRONE_IPv6 = 121;
     SAT_IPv6 = 122;
+    CAINIRS_IPv6 = 123;
     def = 99;
 };
 

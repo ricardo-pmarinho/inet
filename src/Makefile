@@ -1001,6 +1001,7 @@ OBJS = \
     $O/inet/routing/sixgen/AntennaRouting.o \
     $O/inet/routing/sixgen/DroneRouting.o \
     $O/inet/routing/sixgen/HeartBeatRouteData.o \
+    $O/inet/routing/sixgen/IrsRouting.o \
     $O/inet/routing/sixgen/SatelliteRouting.o \
     $O/inet/routing/sixgen/WirelessRouting.o \
     $O/inet/satellite/SatelliteReceiver.o \
