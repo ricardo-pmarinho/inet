@@ -335,7 +335,7 @@ void Oracle::checkShutdownTime(int numNodes){
 
          startNodesNum = this->startNodes->size();
 
-         endSimulation();
+//         endSimulation();
      }
 }
 
@@ -361,7 +361,7 @@ void Oracle::checkShutdownNodes(){
         simulationEnd = lround(simTime().dbl());
 
         emit(simulationEndSignal,simulationEnd);
-        endSimulation();
+//        endSimulation();
     }
 }
 

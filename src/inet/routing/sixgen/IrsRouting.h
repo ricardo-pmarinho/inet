@@ -56,6 +56,7 @@ private:
     vector<float>* rewardMatrix[3][4];
     float qMatrix[3][4];
     float droneQMatrix[3][4];
+    dnn* network;
     /**
      * map for the RL algorithm using the Euclidean distance metric
      * This map stores the distance between the node and its neighbors
@@ -101,9 +102,14 @@ private:
     simtime_t delay = 0;
     long recDroneMsg=0;
     double droneDist = 0;
+    double com_range = 0;
 
     simtime_t meanDelay=0;
     unsigned int qtdMsg=0;
+
+    int n_s0=0; //number of times a node chosen for communication was in state 0 (closer)
+    int n_s1=0; //number of times a node chosen for communication was in state 1 (median)
+    int n_s2=0; //number of times a node chosen for communication was in state 2 (further)
 
     int debug=0;
 
@@ -251,6 +257,11 @@ private:
     bool updateValidRouteLifeTime(const L3Address& destAddr, simtime_t lifetime);
     void scheduleExpungeRoutes();
     void expungeRoutes();
+    void calculateDnnDecision(L3Address cainDest);
+    void calculate_q_matrix();
+    void calculate_coverage_reward(int state,bool decision,L3Address cain_dest);
+    int get_coverage_state(L3Address cain_dest);
+    double calculateDnnDist(int state, double dist);
 //
 //    /* Control packet creators */
     const Ptr<CAINMSG> createAckTimer(heartBeatType cainMsgType,int seqNum);

@@ -441,6 +441,7 @@ private:
     void resetLeachCalculation();
     void handleHostSnooping(const Ptr<SNOOPHB> snoop);
     void handleDroneSnooping(const Ptr<SNOOPHB> snoop);
+    void handleCainIRS(const Ptr<CAINMSG>& cainmsg);
 //    void handleRREQ(const Ptr<Rreq>& rreq, const L3Address& sourceAddr, unsigned int timeToLive);
 //    void handleRERR(const Ptr<const Rerr>& rerr, const L3Address& sourceAddr);
 //    void handleHelloMessage(const Ptr<Rrep>& helloMessage);

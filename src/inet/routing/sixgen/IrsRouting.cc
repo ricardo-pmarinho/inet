@@ -169,11 +169,8 @@ void IrsRouting::initialize(int stage)
             }
         }
 
-        for(int i=0;i<3;i++){
-            for(int j=0; j<4; j++){
-                droneQMatrix[i][j]=0;
-            }
-        }
+        gat = new Gat();
+        network=network->createDnn(3, 2, 3, 1);
 
     }
 }
@@ -496,15 +493,9 @@ void IrsRouting::sendHeartBeatpkg(const Ptr<HeartBeat>& hbpacket, const L3Addres
     if (destAddr.isBroadcast())
         lastBroadcastTime = simTime();
 
-    if (delay == 0)
-        socket.send(packet);
-    else {
-        if (simTime() > rebootTime + deletePeriod) {
-            auto *timer = new PacketHolderMessage("aodv-send-jitter", KIND_DELAYEDSEND);
-            timer->setOwnedPacket(packet);
-            scheduleAt(simTime()+delay, timer);
-        }
-    }
+
+    socket.send(packet);
+
 }
 
 const Ptr<DRONEMSG> IrsRouting::createDroneMsg(L3Address dest){
@@ -531,16 +522,52 @@ void IrsRouting::handleSnooping(const Ptr<SNOOPHB>& snoop, const L3Address& sour
 }
 
 void IrsRouting::handleCainIRS(const Ptr<CAINMSG>& cainmsg){
-    sendHeartBeatpkg(cainmsg,addressType->getBroadcastAddress(),1,0);
+
+    calculate_q_matrix();
+    if(!cainmsg->getFromIrs()){
+        if(droneDistMap->size()!=0){
+            cainmsg->setSourceAddr(getSelfIPAddress());
+            map<L3Address,double>::iterator it = droneDistMap->begin();
+            cainmsg->setCainDestAddr(it->first);
+            cainmsg->setFromIrs(true);
+            calculateDnnDecision(cainmsg->getCainDestAddr());
+            bool decision = network->getDecision();
+            if(decision){
+                double back = 0;
+                sendHeartBeatpkg(cainmsg,addressType->getBroadcastAddress(),1,0);
+            }
+        }else if(hostDistMap->size()!=0){
+            cainmsg->setSourceAddr(getSelfIPAddress());
+            map<L3Address,double>::iterator it = hostDistMap->begin();
+            cainmsg->setCainDestAddr(it->first);
+            cainmsg->setFromIrs(true);
+            sendHeartBeatpkg(cainmsg,addressType->getBroadcastAddress(),1,0);
+        }
+    }
 }
 
 void IrsRouting::handleCainFWD(const Ptr<CAINMSG>& cainmsg){
-    EV << "Destined to: " << cainmsg->getDestAddr() << ", initiated by: " << cainmsg->getOriginatorAddr() <<
-            ", sent by: " << cainmsg->getSourceAddr() << endl;
-    EV << "CAIN destination: " << cainmsg->getCainDestAddr() << endl;
-    EV << "Self ipAddr: " << getSelfIPAddress() << endl;
-
-
+    calculate_q_matrix();
+    if(!cainmsg->getFromIrs()){
+        if(droneDistMap->size()!=0){
+            cainmsg->setSourceAddr(getSelfIPAddress());
+            map<L3Address,double>::iterator it = droneDistMap->begin();
+            cainmsg->setCainDestAddr(it->first);
+            cainmsg->setFromIrs(true);
+            calculateDnnDecision(cainmsg->getCainDestAddr());
+            bool decision = network->getDecision();
+            if(decision){
+                double back = 0;
+                sendHeartBeatpkg(cainmsg,addressType->getBroadcastAddress(),1,0);
+            }
+        }else if(hostDistMap->size()!=0){
+            cainmsg->setSourceAddr(getSelfIPAddress());
+            map<L3Address,double>::iterator it = hostDistMap->begin();
+            cainmsg->setCainDestAddr(it->first);
+            cainmsg->setFromIrs(true);
+            sendHeartBeatpkg(cainmsg,addressType->getBroadcastAddress(),1,0);
+        }
+    }
 }
 
 void IrsRouting::handleDroneSnooping(const Ptr<SNOOPHB> snoop)
@@ -550,6 +577,8 @@ void IrsRouting::handleDroneSnooping(const Ptr<SNOOPHB> snoop)
     Coord thisCoord = Coord(baseMobility->getCurrentPosition());
     Coord senderCoord = snoop->getMsgCoord();
     double dist = thisCoord.distance(senderCoord);
+    if(dist > com_range)
+        com_range = dist;
     droneDistMap->operator [](snoop->getOriginatorAddr()) = dist;
     this->gat->insertGatNeighbor(snoop->getOriginatorAddr(),dist);
     return;
@@ -562,6 +591,130 @@ void IrsRouting::handleHostSnooping(const Ptr<SNOOPHB> snoop)
     double dist = thisCoord.distance(senderCoord);
     hostDistMap->operator [](snoop->getOriginatorAddr()) = dist;
     return;
+}
+
+
+void IrsRouting::calculateDnnDecision(L3Address cainDest){
+    for(int i = 0; i<100; i++){
+        int state = get_coverage_state(cainDest);
+        double dnnDist;
+        dnnDist = calculateDnnDist(state, droneDistMap->at(cainDest));
+        std::vector<bool> *decisionVect;
+        this->gat->calcAttention();
+        double attention = this->gat->getAttention(cainDest);
+        decisionVect = network->calculateDnn(attention,dnnDist, meanDelay.dbl()*pow(10,6));
+
+        int decision;
+
+        if(decisionVect->operator [](0)){//true
+            if(decisionVect->operator [](1))//true-true
+                decision=3;
+            else//true-false
+                decision=2;
+        }else{//false
+            if(decisionVect->operator [](1))//false-true
+                decision=1;
+            else//false-false
+                decision=0;
+        }
+        calculate_coverage_reward(state, decision, cainDest);
+        calculate_q_matrix();
+        float result = qMatrix[state][decision];
+        network->updateDnn(result,decisionVect);
+    }
+}
+
+
+double IrsRouting::calculateDnnDist(int state, double dist){
+    int qtd_ranges = 3;
+    //dist-state to normalize the distance
+    double distPercentage = (dist-state)/qtd_ranges;
+    return distPercentage;
+
+    return 0.0;
+}
+
+
+int IrsRouting::get_coverage_state(L3Address cain_dest){
+    int qtd_ranges = 3;
+    double dist = droneDistMap->at(cain_dest);
+    for(int i=0;i<qtd_ranges;i++){
+        if(dist<=(i+1)*(com_range/qtd_ranges)){
+            return i;
+        }
+    }
+
+    return 0;
+}
+
+
+void IrsRouting::calculate_q_matrix(){
+    float discount_rate = 0.95;
+    int n_interations = 100;
+
+    for(int i=0; i <= n_interations; i++){
+        float q_prev[3][4];
+
+        for(int j=0; j<3; j++)
+            for(int k=0; k<4;k++)
+                q_prev[j][k]=qMatrix[j][k];
+        for(int s=0;s<3;s++){
+          for(int a=0; a<4;a++){
+                float incr=0;
+                for(int sp=0;sp<3;sp++){
+                    float max=0;
+                      for(int al=0; al<4;al++){
+                        if(q_prev[sp][al]>max)
+                            max=q_prev[sp][al];
+                      }
+                      float sMatr=stateMatrix[s][a]->at(sp);
+                      float rMatr=rewardMatrix[s][a]->at(sp);
+                      if(qtdMsg){
+                          double weight = meanDelay.dbl()*pow(10,6);
+                          weight = 1/weight;
+                          incr+=stateMatrix[s][a]->at(sp)*(rewardMatrix[s][a]->at(sp)*weight+discount_rate*max);
+                      }else
+                          incr+=stateMatrix[s][a]->at(sp)*(rewardMatrix[s][a]->at(sp)+discount_rate*max);
+                }
+                qMatrix[s][a]=incr;
+            }
+        }
+    }
+}
+
+
+void IrsRouting::calculate_coverage_reward(int state,bool decision,L3Address cain_dest){
+    double percent;
+    int qtd_ranges = 3;
+    double dist = droneDistMap->at(cain_dest);
+    for(int i=0;i<qtd_ranges;i++){
+        if(dist<=(i+1)*(com_range/qtd_ranges)){
+            percent=dist/((i+1)*(com_range/qtd_ranges));
+            percent*=100;
+            break;
+        }
+    }
+
+    switch (state) {
+        case 0:
+            stateMatrix[state][decision]->at(0)*=n_s0;
+            stateMatrix[state][decision]->at(0)+=percent;
+            n_s0++;
+            stateMatrix[state][decision]->at(0)/=n_s0;
+            break;
+        case 1:
+            stateMatrix[state][decision]->at(1)*=n_s1;
+            stateMatrix[state][decision]->at(1)+=percent;
+            n_s1++;
+            stateMatrix[state][decision]->at(1)/=n_s1;
+            break;
+        case 2:
+            stateMatrix[state][decision]->at(2)*=n_s2;
+            stateMatrix[state][decision]->at(2)+=percent;
+            n_s2++;
+            stateMatrix[state][decision]->at(2)/=n_s2;
+            break;
+    }
 }
 
 bool IrsRouting::hasOngoingRouteDiscovery(const L3Address& target)
@@ -819,7 +972,7 @@ void IrsRouting::processPacket(Packet *packet)
         case CAINFWD:
         case CAINFWD_IPv6:
             EV << "CAIN FWD message arrived" << endl;
-            handleCainFWD(CHK(dynamicPtrCast<CAINMSG>(hbPacket->dupShared())));
+//            handleCainFWD(CHK(dynamicPtrCast<CAINMSG>(hbPacket->dupShared())));
             delete packet;
             return;
         default:
@@ -1007,40 +1160,6 @@ bool IrsRouting::sendMessageML(int state){
     if(qMatrix[state][0]>=qMatrix[state][1])//state0 (send) is the best option
         return true;
     return false;
-}
-
-void IrsRouting::calculate_drone_q_matrix(){
-    float discount_rate = 0.95;
-    int n_interations = 100;
-
-    for(int i=0; i <= n_interations; i++){
-        float q_prev[3][4];
-
-        for(int j=0; j<3; j++)
-            for(int k=0; k<4;k++)
-                q_prev[j][k]=droneQMatrix[j][k];
-        for(int s=0;s<3;s++){
-          for(int a=0; a<4;a++){
-                float incr=0;
-                for(int sp=0;sp<3;sp++){
-                    float max=0;
-                      for(int al=0; al<4;al++){
-                        if(q_prev[sp][al]>max)
-                            max=q_prev[sp][al];
-                      }
-                      float sMatr=stateMatrix[s][a]->at(sp);
-                      float rMatr=rewardMatrix[s][a]->at(sp);
-                      if(qtdMsg){
-                          double weight = meanDelay.dbl()*pow(10,6);
-                          weight = 1/weight;
-                          incr+=stateMatrix[s][a]->at(sp)*(rewardMatrix[s][a]->at(sp)*weight+discount_rate*max);
-                      }else
-                          incr+=stateMatrix[s][a]->at(sp)*(rewardMatrix[s][a]->at(sp)+discount_rate*max);
-                }
-                droneQMatrix[s][a]=incr;
-            }
-        }
-    }
 }
 
 void IrsRouting::create_reward_matrix(){

@@ -575,32 +575,34 @@ void DroneRouting::handleSnooping(const Ptr<SNOOPHB>& snoop, const L3Address& so
 void DroneRouting::handleCainIRS(const Ptr<CAINMSG>& cainmsg){
     calcDelayMean(cainmsg->getTimeInit());
     auto droneMsg = createDroneMsg(addressType->getBroadcastAddress());
-    if(satelliteAddr.isUnspecified()){
-        int droneDistMapsize = droneDistMap->size();
-        if(droneDistMapsize!=0){
-            this->gat->calcAttention();
-            map<L3Address,double>::iterator it = droneDistMap->begin();
-            for(;it != droneDistMap->end(); it++){
-                bool decision = calculateDroneDecision(it->first);
-                decision = true;
-                if(decision){
-                    droneMsg->setDestAddr(it->first);
-                    break;
+        if(getSelfIPAddress() == cainmsg->getCainDestAddr()){
+        if(satelliteAddr.isUnspecified()){
+            int droneDistMapsize = droneDistMap->size();
+            if(droneDistMapsize!=0){
+                this->gat->calcAttention();
+                map<L3Address,double>::iterator it = droneDistMap->begin();
+                for(;it != droneDistMap->end(); it++){
+                    bool decision = calculateDroneDecision(it->first);
+                    decision = true;
+                    if(decision){
+                        droneMsg->setDestAddr(it->first);
+                        break;
+                    }
                 }
             }
+        }else{
+            droneMsg->setDestAddr(satelliteAddr);
+
+            Coord ueCoord = cainmsg->getSenderCoord();
+            Coord thisCoord = baseMobility->getCurrentPosition();
+            droneDist = thisCoord.distance(ueCoord);
+            emit(droneDistSignal,droneDist);
+
+            recDroneMsg++;
+            emit(recDroneMsgSignal,recDroneMsg);
         }
-    }else{
-        droneMsg->setDestAddr(satelliteAddr);
-
-        Coord ueCoord = cainmsg->getSenderCoord();
-        Coord thisCoord = baseMobility->getCurrentPosition();
-        droneDist = thisCoord.distance(ueCoord);
-        emit(droneDistSignal,droneDist);
-
-        recDroneMsg++;
-        emit(recDroneMsgSignal,recDroneMsg);
+        sendHeartBeatpkg(droneMsg,addressType->getBroadcastAddress(),1,0);
     }
-    sendHeartBeatpkg(droneMsg,addressType->getBroadcastAddress(),1,0);
 }
 
 void DroneRouting::handleCainFWD(const Ptr<CAINMSG>& cainmsg){
@@ -612,10 +614,10 @@ void DroneRouting::handleCainFWD(const Ptr<CAINMSG>& cainmsg){
 
     calcDelayMean(cainmsg->getTimeInit());
 
-    if(this->getSelfIPAddress() == cainmsg->getDestAddr()){
-        auto droneMsg = createDroneMsg(addressType->getBroadcastAddress());
-        EV << "Drone receiving message" << endl;
+    auto droneMsg = createDroneMsg(addressType->getBroadcastAddress());
+    EV << "Drone receiving message" << endl;
 
+    if(getSelfIPAddress() == cainmsg->getCainDestAddr()){
         if(satelliteAddr.isUnspecified()){
             int droneDistMapsize = droneDistMap->size();
             if(droneDistMapsize!=0){

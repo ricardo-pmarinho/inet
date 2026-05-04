@@ -927,7 +927,7 @@ void SatelliteRouting::handleDroneMsg(const Ptr<DRONEMSG>& droneMsg){
 
     recSatMsg++;
     emit(recSatMsgSignal,recSatMsg);
-    sendHeartBeatpkg(satMsg,addressType->getBroadcastAddress(),1,0);
+//    sendHeartBeatpkg(satMsg,addressType->getBroadcastAddress(),1,0);
 }
 
 void SatelliteRouting::handleSnooping(const Ptr<SNOOPHB>& snoop, const L3Address& sourceAddr)

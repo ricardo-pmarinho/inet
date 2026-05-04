@@ -3548,6 +3548,7 @@ void CAINMSG::copy(const CAINMSG& other)
     this->distance = other.distance;
     this->timeInit = other.timeInit;
     this->pheromone = other.pheromone;
+    this->fromIrs = other.fromIrs;
 }
 
 void CAINMSG::parsimPack(omnetpp::cCommBuffer *b) const
@@ -3574,6 +3575,7 @@ void CAINMSG::parsimPack(omnetpp::cCommBuffer *b) const
     doParsimPacking(b,this->distance);
     doParsimPacking(b,this->timeInit);
     doParsimPacking(b,this->pheromone);
+    doParsimPacking(b,this->fromIrs);
 }
 
 void CAINMSG::parsimUnpack(omnetpp::cCommBuffer *b)
@@ -3600,6 +3602,7 @@ void CAINMSG::parsimUnpack(omnetpp::cCommBuffer *b)
     doParsimUnpacking(b,this->distance);
     doParsimUnpacking(b,this->timeInit);
     doParsimUnpacking(b,this->pheromone);
+    doParsimUnpacking(b,this->fromIrs);
 }
 
 unsigned int CAINMSG::getHopCount() const
@@ -3833,6 +3836,17 @@ void CAINMSG::setPheromone(double pheromone)
     this->pheromone = pheromone;
 }
 
+bool CAINMSG::getFromIrs() const
+{
+    return this->fromIrs;
+}
+
+void CAINMSG::setFromIrs(bool fromIrs)
+{
+    handleChange();
+    this->fromIrs = fromIrs;
+}
+
 class CAINMSGDescriptor : public omnetpp::cClassDescriptor
 {
   private:
@@ -3859,6 +3873,7 @@ class CAINMSGDescriptor : public omnetpp::cClassDescriptor
         FIELD_distance,
         FIELD_timeInit,
         FIELD_pheromone,
+        FIELD_fromIrs,
     };
   public:
     CAINMSGDescriptor();
@@ -3921,7 +3936,7 @@ const char *CAINMSGDescriptor::getProperty(const char *propertyname) const
 int CAINMSGDescriptor::getFieldCount() const
 {
     omnetpp::cClassDescriptor *basedesc = getBaseClassDescriptor();
-    return basedesc ? 21+basedesc->getFieldCount() : 21;
+    return basedesc ? 22+basedesc->getFieldCount() : 22;
 }
 
 unsigned int CAINMSGDescriptor::getFieldTypeFlags(int field) const
@@ -3954,8 +3969,9 @@ unsigned int CAINMSGDescriptor::getFieldTypeFlags(int field) const
         FD_ISEDITABLE,    // FIELD_distance
         0,    // FIELD_timeInit
         FD_ISEDITABLE,    // FIELD_pheromone
+        FD_ISEDITABLE,    // FIELD_fromIrs
     };
-    return (field >= 0 && field < 21) ? fieldTypeFlags[field] : 0;
+    return (field >= 0 && field < 22) ? fieldTypeFlags[field] : 0;
 }
 
 const char *CAINMSGDescriptor::getFieldName(int field) const
@@ -3988,8 +4004,9 @@ const char *CAINMSGDescriptor::getFieldName(int field) const
         "distance",
         "timeInit",
         "pheromone",
+        "fromIrs",
     };
-    return (field >= 0 && field < 21) ? fieldNames[field] : nullptr;
+    return (field >= 0 && field < 22) ? fieldNames[field] : nullptr;
 }
 
 int CAINMSGDescriptor::findField(const char *fieldName) const
@@ -4017,6 +4034,7 @@ int CAINMSGDescriptor::findField(const char *fieldName) const
     if (fieldName[0] == 'd' && strcmp(fieldName, "distance") == 0) return base+18;
     if (fieldName[0] == 't' && strcmp(fieldName, "timeInit") == 0) return base+19;
     if (fieldName[0] == 'p' && strcmp(fieldName, "pheromone") == 0) return base+20;
+    if (fieldName[0] == 'f' && strcmp(fieldName, "fromIrs") == 0) return base+21;
     return basedesc ? basedesc->findField(fieldName) : -1;
 }
 
@@ -4050,8 +4068,9 @@ const char *CAINMSGDescriptor::getFieldTypeString(int field) const
         "double",    // FIELD_distance
         "omnetpp::simtime_t",    // FIELD_timeInit
         "double",    // FIELD_pheromone
+        "bool",    // FIELD_fromIrs
     };
-    return (field >= 0 && field < 21) ? fieldTypeStrings[field] : nullptr;
+    return (field >= 0 && field < 22) ? fieldTypeStrings[field] : nullptr;
 }
 
 const char **CAINMSGDescriptor::getFieldPropertyNames(int field) const
@@ -4146,6 +4165,7 @@ std::string CAINMSGDescriptor::getFieldValueAsString(void *object, int field, in
         case FIELD_distance: return double2string(pp->getDistance());
         case FIELD_timeInit: return simtime2string(pp->getTimeInit());
         case FIELD_pheromone: return double2string(pp->getPheromone());
+        case FIELD_fromIrs: return bool2string(pp->getFromIrs());
         default: return "";
     }
 }
@@ -4171,6 +4191,7 @@ bool CAINMSGDescriptor::setFieldValueAsString(void *object, int field, int i, co
         case FIELD_msgId: pp->setMsgId((value)); return true;
         case FIELD_distance: pp->setDistance(string2double(value)); return true;
         case FIELD_pheromone: pp->setPheromone(string2double(value)); return true;
+        case FIELD_fromIrs: pp->setFromIrs(string2bool(value)); return true;
         default: return false;
     }
 }

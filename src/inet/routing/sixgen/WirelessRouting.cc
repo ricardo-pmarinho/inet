@@ -943,6 +943,7 @@ const Ptr<CAINMSG> WirelessRouting::createCainMsg(){
         cainMsg->setTimeInit(simTime());
         EV << (usingIpv6 ? "CAINREQ_IPv6" : "CAINREQ") << " message" << endl;
     }
+    cainMsg->setFromIrs(false);
     return cainMsg;
 }
 
@@ -1689,6 +1690,12 @@ void WirelessRouting::processPacket(Packet *packet)
             handleWeightMsg(CHK(dynamicPtrCast<FLWEIGHT>(hbPacket->dupShared())));
             delete packet;
             return;
+        case CAINIRS:
+        case CAINIRS_IPv6:
+            EV << "CAIN IRS message arrived" << endl;
+            handleCainIRS(CHK(dynamicPtrCast<CAINMSG>(hbPacket->dupShared())));
+            delete packet;
+            return;
         default:
             delete packet;
             return;
@@ -2025,6 +2032,17 @@ void WirelessRouting::handleAntennaMsg(const Ptr<ANTENNA>& antennaMsg){
         recAntennaMsg++;
         emit(recAntennaMsgSignal,recAntennaMsg);
     }
+}
+
+void WirelessRouting::handleCainIRS(const Ptr<CAINMSG>& cainmsg){
+
+    Coord senderCoord = cainmsg->getSenderCoord();
+    dist = baseMobility->getCurrentPosition().distance(senderCoord);
+    emit(distSignal,dist);
+
+    recCainFwdMsg++;
+    emit(recCainFwdMsgSignal,recCainFwdMsg);
+    handleCainFWD(cainmsg);
 }
 
 void WirelessRouting::handleDroneMsg(const Ptr<DRONEMSG>& droneMsg){
